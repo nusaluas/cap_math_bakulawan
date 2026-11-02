@@ -1,0 +1,2669 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Street Fighter Matematika - Multiplayer Arena</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- jsPDF & AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <!-- Tone.js untuk Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Font Awesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700;800&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --sf-yellow: #ffd700;
+            --sf-orange: #ff4500;
+            --sf-blue: #00e5ff;
+        }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #09090b 100%);
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        .font-arcade {
+            font-family: 'Press Start 2P', cursive;
+        }
+        .font-fighting {
+            font-family: 'Teko', sans-serif;
+            letter-spacing: 1.5px;
+        }
+        .sf-title {
+            background: linear-gradient(180deg, #fff700 0%, #ff8800 50%, #ff0000 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0px 4px 0px #000) drop-shadow(0px 0px 15px rgba(255,69,0,0.6));
+        }
+        .sf-border {
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3), inset 0 0 15px rgba(255, 69, 0, 0.2);
+        }
+        .sf-border-blue {
+            border: 3px solid #00e5ff;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.3), inset 0 0 15px rgba(0, 229, 255, 0.2);
+        }
+        .sf-btn {
+            background: linear-gradient(180deg, #ff8800 0%, #cc0000 100%);
+            border: 2px solid #ffd700;
+            box-shadow: 0 4px 0 #770000, 0 0 12px rgba(255, 136, 0, 0.5);
+            transition: all 0.1s ease;
+            text-transform: uppercase;
+        }
+        .sf-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #770000, 0 0 20px rgba(255, 215, 0, 0.8);
+            filter: brightness(1.1);
+        }
+        .sf-btn:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #770000;
+        }
+        .sf-btn:disabled {
+            background: #4b5563;
+            border-color: #9ca3af;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .sf-btn-blue {
+            background: linear-gradient(180deg, #00b4db 0%, #0083b0 100%);
+            border: 2px solid #00e5ff;
+            box-shadow: 0 4px 0 #004e66, 0 0 12px rgba(0, 229, 255, 0.5);
+        }
+        .sf-btn-blue:hover:not(:disabled) {
+            box-shadow: 0 6px 0 #004e66, 0 0 20px rgba(0, 229, 255, 0.8);
+        }
+        .sf-btn-green {
+            background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+            border: 2px solid #86efac;
+            box-shadow: 0 4px 0 #14532d, 0 0 12px rgba(34, 197, 94, 0.5);
+        }
+
+        /* Health Bar Skew Style */
+        .hp-container {
+            transform: skewX(-15deg);
+            border: 3px solid #fff;
+            box-shadow: 0 0 10px #000, inset 0 0 8px #000;
+            background: #7f1d1d;
+            overflow: hidden;
+        }
+        .hp-fill-p1 {
+            background: linear-gradient(90deg, #ef4444 0%, #eab308 40%, #22c55e 100%);
+            transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .hp-fill-p2 {
+            background: linear-gradient(270deg, #ef4444 0%, #eab308 40%, #22c55e 100%);
+            transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* Screen Shake Animation */
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            15% { transform: translate(-10px, -6px) rotate(-1.5deg); }
+            30% { transform: translate(10px, 4px) rotate(1.5deg); }
+            45% { transform: translate(-8px, 6px) rotate(-1deg); }
+            60% { transform: translate(8px, -4px) rotate(1deg); }
+            75% { transform: translate(-4px, 2px) rotate(-0.5deg); }
+        }
+        .shake-screen {
+            animation: shake 0.45s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #eab308; border-radius: 4px; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen select-none">
+
+    <!-- HEADER BAR -->
+    <header class="bg-zinc-950/90 border-b-2 border-yellow-500/60 py-3 px-4 md:px-8 flex flex-wrap justify-between items-center z-30 sticky top-0 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600 flex items-center justify-center shadow-lg border border-yellow-200">
+                <i class="fa-solid fa-hand-fist text-zinc-950 text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-arcade text-sm md:text-lg sf-title tracking-wider">STREET FIGHTER</h1>
+                <p class="text-xs text-yellow-400 font-bold tracking-widest uppercase -mt-1">MATEMATIKA ARENA MULTIPLAYER</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 mt-2 sm:mt-0">
+            <div id="connectionBadge" class="hidden items-center gap-2 bg-zinc-900 border border-zinc-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                <span id="connDot" class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                <span id="connText" class="text-zinc-300">TERHUBUNG</span>
+            </div>
+            <button onclick="toggleAudioMute()" id="btnSound" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-yellow-400 w-9 h-9 rounded-lg flex items-center justify-center transition" title="Suara Efek">
+                <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <button id="btnExitHome" onclick="confirmResetApp()" class="hidden bg-red-900/80 hover:bg-red-700 border border-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                <i class="fa-solid fa-right-from-bracket"></i> KELUAR
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow flex flex-col items-center justify-center p-3 md:p-6 w-full max-w-7xl mx-auto">
+
+        <!-- ========================================== -->
+        <!-- 1. LANDING SCREEN (PILIH MODE)             -->
+        <!-- ========================================== -->
+        <section id="screenLanding" class="w-full max-w-4xl my-auto">
+            <div class="text-center mb-8">
+                <span class="px-4 py-1 rounded-full bg-orange-500/20 border border-orange-500 text-orange-300 text-xs font-bold uppercase tracking-widest">EDISI EDUKASI PEER-TO-PEER</span>
+                <h2 class="font-fighting text-6xl md:text-8xl sf-title uppercase mt-2 leading-none">MATH FIGHTER II</h2>
+                <p class="text-zinc-300 text-base md:text-lg max-w-xl mx-auto mt-2">Adu ketangkasan berhitung pertambahan, pengurangan, perkalian, dan pembagian secara langsung melawan teman sekelasmu!</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Card Pemain -->
+                <div class="bg-zinc-900/90 sf-border-blue rounded-2xl p-6 md:p-8 flex flex-col justify-between hover:scale-[1.01] transition duration-200 relative overflow-hidden group">
+                    <div class="absolute -right-8 -bottom-8 text-cyan-500/10 text-9xl pointer-events-none group-hover:scale-110 transition">
+                        <i class="fa-solid fa-gamepad"></i>
+                    </div>
+                    <div>
+                        <div class="w-14 h-14 rounded-xl bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-cyan-300 text-2xl mb-4">
+                            <i class="fa-solid fa-user-ninja"></i>
+                        </div>
+                        <h3 class="font-fighting text-4xl text-cyan-300 tracking-wide">MODE PEMAIN (SISWA)</h3>
+                        <p class="text-zinc-300 text-sm mt-2 leading-relaxed">
+                            Masuk ke lobby kelas menggunakan <strong>Kode Room Admin</strong>, pilih karakter petarung Street Fighter favoritmu, tantang siswa lain, dan ajukan soal matematika!
+                        </p>
+                        <ul class="mt-4 space-y-1.5 text-xs text-cyan-200/90">
+                            <li><i class="fa-solid fa-check text-cyan-400 mr-2"></i>Kirim & Terima Undangan Baku Lawan</li>
+                            <li><i class="fa-solid fa-check text-cyan-400 mr-2"></i>Bergantian Menyerang (Menanya) & Bertahan (Menjawab)</li>
+                            <li><i class="fa-solid fa-check text-cyan-400 mr-2"></i>Tanpa Batas Waktu Pengerjaan</li>
+                        </ul>
+                    </div>
+                    <button onclick="openPlayerLogin()" class="sf-btn sf-btn-blue w-full py-3.5 rounded-xl font-arcade text-xs md:text-sm text-white mt-6">
+                        MASUK SEBAGAI PEMAIN <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+
+                <!-- Card Admin -->
+                <div class="bg-zinc-900/90 sf-border rounded-2xl p-6 md:p-8 flex flex-col justify-between hover:scale-[1.01] transition duration-200 relative overflow-hidden group">
+                    <div class="absolute -right-8 -bottom-8 text-yellow-500/10 text-9xl pointer-events-none group-hover:scale-110 transition">
+                        <i class="fa-solid fa-server"></i>
+                    </div>
+                    <div>
+                        <div class="w-14 h-14 rounded-xl bg-yellow-500/20 border border-yellow-400 flex items-center justify-center text-yellow-300 text-2xl mb-4">
+                            <i class="fa-solid fa-crown"></i>
+                        </div>
+                        <h3 class="font-fighting text-4xl text-yellow-400 tracking-wide">MODE ADMIN (GURU)</h3>
+                        <p class="text-zinc-300 text-sm mt-2 leading-relaxed">
+                            Buat Room Server PeerJS untuk membagikan kode ke siswa. Pantau seluruh pertarungan, soal yang dikerjakan, dan perolehan skor siswa secara <em>real-time</em>.
+                        </p>
+                        <ul class="mt-4 space-y-1.5 text-xs text-yellow-200/90">
+                            <li><i class="fa-solid fa-lock text-yellow-400 mr-2"></i>Terproteksi Password Khusus Guru</li>
+                            <li><i class="fa-solid fa-tv text-yellow-400 mr-2"></i>Liveboard Pemantauan Soal & Pertarungan Siswa</li>
+                            <li><i class="fa-solid fa-file-pdf text-yellow-400 mr-2"></i>Unduh Laporan Skor & Riwayat Soal ke PDF</li>
+                        </ul>
+                    </div>
+                    <button onclick="openAdminModal()" class="sf-btn w-full py-3.5 rounded-xl font-arcade text-xs md:text-sm text-white mt-6">
+                        BUKA PANEL ADMIN <i class="fa-solid fa-shield-halved ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 2. ADMIN PASSWORD MODAL                    -->
+        <!-- ========================================== -->
+        <div id="modalAdminAuth" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+            <div class="bg-zinc-900 sf-border rounded-2xl max-w-md w-full p-6 relative animate-fade-in">
+                <button onclick="closeAdminModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="text-center mb-6">
+                    <div class="w-14 h-14 rounded-full bg-yellow-500/20 border-2 border-yellow-400 flex items-center justify-center mx-auto mb-3 text-yellow-400 text-2xl">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <h3 class="font-fighting text-3xl text-yellow-400">OTENTIKASI ADMIN</h3>
+                    <p class="text-xs text-zinc-400">Masukkan kata sandi khusus untuk membuka server kelas</p>
+                </div>
+                <form onsubmit="verifyAdminPassword(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-zinc-300 mb-1">Password Admin</label>
+                        <input type="password" id="inputAdminPass" placeholder="Masukkan password..." required
+                            class="w-full bg-zinc-950 border-2 border-zinc-700 focus:border-yellow-400 rounded-xl px-4 py-3 text-white font-bold tracking-wider outline-none">
+                        <p id="adminPassError" class="text-red-400 text-xs font-bold mt-2 hidden"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Password salah! Akses ditolak.</p>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="button" onclick="closeAdminModal()" class="w-1/3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-3 rounded-xl">Batal</button>
+                        <button type="submit" class="w-2/3 sf-btn font-arcade text-xs text-white py-3 rounded-xl">MASUK ADMIN</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 3. ADMIN LIVEBOARD SCREEN                  -->
+        <!-- ========================================== -->
+        <section id="screenAdminDashboard" class="w-full hidden space-y-6">
+            <!-- Top Room Code Banner -->
+            <div class="bg-gradient-to-r from-zinc-900 via-indigo-950 to-zinc-900 sf-border rounded-2xl p-5 md:p-6 flex flex-col lg:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-2xl bg-yellow-500/20 border-2 border-yellow-400 flex items-center justify-center text-yellow-300 text-3xl shrink-0">
+                        <i class="fa-solid fa-tower-broadcast animate-pulse"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs bg-green-500/20 text-green-300 border border-green-500 px-2.5 py-0.5 rounded-full font-bold uppercase">Server Aktif</span>
+                        <h2 class="font-fighting text-3xl md:text-4xl text-white mt-1">pusat komando & liveboard guru</h2>
+                        <p class="text-zinc-300 text-sm">Bagikan <strong>Kode Room Admin</strong> di samping kepada seluruh siswa agar dapat terhubung.</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto justify-end">
+                    <div class="bg-zinc-950 border-2 border-yellow-400 rounded-xl px-5 py-3 text-center min-w-[210px]">
+                        <p class="text-[11px] text-zinc-400 uppercase font-bold tracking-widest">KODE ROOM ADMIN (PEER ID)</p>
+                        <div class="flex items-center justify-center gap-3 mt-1">
+                            <span id="adminRoomCodeDisplay" class="font-arcade text-xl md:text-2xl text-yellow-400 tracking-wider">MEMUAT...</span>
+                            <button onclick="copyRoomCode()" class="text-zinc-400 hover:text-yellow-300 transition text-lg" title="Salin Kode">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="downloadReportPDF()" class="sf-btn sf-btn-green px-5 py-4 rounded-xl font-arcade text-xs text-white flex items-center gap-2.5 shrink-0">
+                        <i class="fa-solid fa-file-pdf text-lg"></i> UNDUH HASIL (PDF)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistik Ringkas -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-zinc-900/90 border border-zinc-700 rounded-xl p-4 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl"><i class="fa-solid fa-users"></i></div>
+                    <div>
+                        <p class="text-xs text-zinc-400 uppercase font-bold">Siswa Terhubung</p>
+                        <p id="statTotalPlayers" class="font-fighting text-3xl text-white leading-none mt-1">0</p>
+                    </div>
+                </div>
+                <div class="bg-zinc-900/90 border border-zinc-700 rounded-xl p-4 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl"><i class="fa-solid fa-fire-flame-curved"></i></div>
+                    <div>
+                        <p class="text-xs text-zinc-400 uppercase font-bold">Pertarungan Aktif</p>
+                        <p id="statActiveMatches" class="font-fighting text-3xl text-orange-400 leading-none mt-1">0</p>
+                    </div>
+                </div>
+                <div class="bg-zinc-900/90 border border-zinc-700 rounded-xl p-4 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl"><i class="fa-solid fa-calculator"></i></div>
+                    <div>
+                        <p class="text-xs text-zinc-400 uppercase font-bold">Soal Dikerjakan</p>
+                        <p id="statTotalQuestions" class="font-fighting text-3xl text-purple-300 leading-none mt-1">0</p>
+                    </div>
+                </div>
+                <div class="bg-zinc-900/90 border border-zinc-700 rounded-xl p-4 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-green-500/20 text-green-400 flex items-center justify-center text-xl"><i class="fa-solid fa-trophy"></i></div>
+                    <div>
+                        <p class="text-xs text-zinc-400 uppercase font-bold">Skor Tertinggi</p>
+                        <p id="statTopScore" class="font-fighting text-2xl text-green-400 leading-none mt-1 truncate max-w-[130px]">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Matches Monitor (Yang Sedang Dikerjakan Siswa) -->
+            <div class="bg-zinc-900/90 border-2 border-orange-500/60 rounded-2xl p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-fighting text-2xl md:text-3xl text-orange-400 flex items-center gap-2">
+                        <i class="fa-solid fa-satellite-dish animate-ping text-sm text-red-500 mr-1"></i>
+                        LIVE ARENA MONITOR (AKTIVITAS PENGERJAAN SISWA SAAT INI)
+                    </h3>
+                    <span class="text-xs text-zinc-400">Real-Time Update</span>
+                </div>
+                <div id="adminActiveMatchesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="col-span-full text-center py-8 bg-zinc-950/60 rounded-xl border border-zinc-800 text-zinc-500">
+                        <i class="fa-solid fa-user-clock text-3xl mb-2"></i>
+                        <p class="text-sm font-bold">Belum ada pertarungan yang sedang berlangsung.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid Tabel Skor & Log Soal -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Tabel Peringkat & Skor Siswa -->
+                <div class="lg:col-span-7 bg-zinc-900/90 border border-zinc-700 rounded-2xl p-5 flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-fighting text-2xl text-yellow-400 flex items-center gap-2">
+                            <i class="fa-solid fa-ranking-star"></i> KLASEMEN SKOR & STATUS SISWA
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-zinc-950 text-zinc-400 text-xs uppercase border-b border-zinc-700">
+                                    <th class="py-3 px-3">#</th>
+                                    <th class="py-3 px-3">Nama Siswa</th>
+                                    <th class="py-3 px-3">Petarung</th>
+                                    <th class="py-3 px-3 text-center">Status</th>
+                                    <th class="py-3 px-3 text-center">M / K</th>
+                                    <th class="py-3 px-3 text-center">Benar/Salah</th>
+                                    <th class="py-3 px-3 text-right">Total Skor</th>
+                                    <th class="py-3 px-3 text-left">Aktivitas Saat Ini</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminScoreTableBody" class="divide-y divide-zinc-800">
+                                <tr>
+                                    <td colspan="8" class="text-center py-8 text-zinc-500">Menunggu siswa bergabung ke room...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabel Riwayat Soal & Jawaban Real-time -->
+                <div class="lg:col-span-5 bg-zinc-900/90 border border-zinc-700 rounded-2xl p-5 flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-fighting text-2xl text-cyan-400 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check"></i> LOG SOAL & JAWABAN SISWA
+                        </h3>
+                        <span class="text-xs bg-cyan-500/10 text-cyan-300 px-2.5 py-1 rounded border border-cyan-500/30">Live Feed</span>
+                    </div>
+                    <div id="adminQuestionLogsContainer" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                        <div class="text-center py-8 text-zinc-500 text-sm">
+                            Belum ada soal matematika yang diajukan.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 4. PLAYER SETUP & CHARACTER SELECT         -->
+        <!-- ========================================== -->
+        <section id="screenPlayerSetup" class="w-full max-w-3xl hidden my-auto">
+            <div class="bg-zinc-900/95 sf-border-blue rounded-2xl p-6 md:p-8">
+                <div class="flex items-center justify-between border-b border-zinc-800 pb-4 mb-6">
+                    <div>
+                        <span class="text-xs text-cyan-400 font-bold uppercase tracking-widest">PENDAFTARAN PETARUNG</span>
+                        <h2 class="font-fighting text-4xl text-white mt-0.5">PILIH KARAKTER & MASUK ARENA</h2>
+                    </div>
+                    <button onclick="backToLanding()" class="text-zinc-400 hover:text-white text-sm font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-arrow-left"></i> Kembali
+                    </button>
+                </div>
+
+                <form onsubmit="connectPlayerToAdmin(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-cyan-300 mb-1.5">Nama Lengkap Siswa</label>
+                            <input type="text" id="inputPlayerName" required maxlength="20" placeholder="Contoh: Budi Santoso"
+                                class="w-full bg-zinc-950 border-2 border-zinc-700 focus:border-cyan-400 rounded-xl px-4 py-3 text-white font-bold outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-yellow-300 mb-1.5">Kode Room Admin</label>
+                            <input type="text" id="inputRoomCode" required placeholder="Contoh: SF-8492"
+                                class="w-full bg-zinc-950 border-2 border-zinc-700 focus:border-yellow-400 rounded-xl px-4 py-3 text-yellow-400 font-arcade text-sm uppercase outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Pilihan Karakter Street Fighter -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-zinc-300 mb-2">Pilih Karakter Street Fighter Kamu:</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="fighterSelectionGrid">
+                            <!-- Di-render via JS -->
+                        </div>
+                    </div>
+
+                    <div id="playerConnectStatus" class="hidden p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-center text-sm font-bold text-yellow-300">
+                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Menghubungkan ke Server Admin...
+                    </div>
+
+                    <button type="submit" id="btnConnectArena" class="sf-btn sf-btn-blue w-full py-4 rounded-xl font-arcade text-sm text-white">
+                        GABUNG KE ARENA SEKARANG!
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 5. PLAYER LOBBY SCREEN                     -->
+        <!-- ========================================== -->
+        <section id="screenPlayerLobby" class="w-full max-w-5xl hidden space-y-6">
+            <!-- Profil Singkat Pemain -->
+            <div class="bg-zinc-900/90 sf-border-blue rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <canvas id="lobbyAvatarCanvas" width="80" height="80" class="rounded-xl bg-zinc-950 border-2 border-cyan-400 shrink-0"></canvas>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span id="lobbyFighterBadge" class="text-xs font-bold uppercase px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400">RYU</span>
+                            <span class="text-xs text-green-400 font-bold"><i class="fa-solid fa-circle text-[8px] mr-1"></i>SIAP TARUNG</span>
+                        </div>
+                        <h2 id="lobbyPlayerName" class="font-fighting text-4xl text-white leading-none mt-1">NAMA SISWA</h2>
+                        <p class="text-xs text-zinc-400">Pilih lawan yang berstatus <strong>SIAP (IDLE)</strong> di bawah untuk mengirim undangan baku lawan!</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 w-full md:w-auto justify-around md:justify-end bg-zinc-950/90 p-3 rounded-xl border border-zinc-800">
+                    <div class="text-center px-3">
+                        <p class="text-[10px] text-zinc-400 uppercase font-bold">Total Skor</p>
+                        <p id="lobbyMyScore" class="font-arcade text-lg text-yellow-400 mt-1">0</p>
+                    </div>
+                    <div class="border-r border-zinc-800"></div>
+                    <div class="text-center px-3">
+                        <p class="text-[10px] text-zinc-400 uppercase font-bold">Menang</p>
+                        <p id="lobbyMyWins" class="font-arcade text-lg text-green-400 mt-1">0</p>
+                    </div>
+                    <div class="border-r border-zinc-800"></div>
+                    <div class="text-center px-3">
+                        <p class="text-[10px] text-zinc-400 uppercase font-bold">Kalah</p>
+                        <p id="lobbyMyLosses" class="font-arcade text-lg text-red-400 mt-1">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daftar Lawan di Lobby -->
+            <div class="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-fighting text-3xl text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-users-viewfinder"></i> DAFTAR PETARUNG DI KELAS (PILIH LAWANMU!)
+                    </h3>
+                    <span id="lobbyOnlineCount" class="text-xs font-bold bg-zinc-800 px-3 py-1 rounded-full text-zinc-300">0 Siswa Online</span>
+                </div>
+
+                <div id="lobbyOpponentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Di-render secara dinamis -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 6. STREET FIGHTER BATTLE ARENA SCREEN      -->
+        <!-- ========================================== -->
+        <section id="screenBattleArena" class="w-full max-w-5xl hidden space-y-4">
+            <!-- Top HUD: Health Bars & VS Banner -->
+            <div class="bg-zinc-950/90 sf-border rounded-2xl p-3 md:p-4">
+                <div class="grid grid-cols-11 items-center gap-2">
+                    <!-- Player 1 (Kiri) HUD -->
+                    <div class="col-span-5">
+                        <div class="flex justify-between items-end mb-1 px-1">
+                            <div>
+                                <span id="hudP1Char" class="text-[10px] font-arcade text-yellow-400 block">RYU</span>
+                                <span id="hudP1Name" class="font-fighting text-xl md:text-2xl text-white leading-none">PLAYER 1</span>
+                            </div>
+                            <span id="hudP1HpText" class="font-arcade text-xs text-green-400">100/100</span>
+                        </div>
+                        <div class="hp-container h-5 md:h-6 w-full">
+                            <div id="hudP1Bar" class="hp-fill-p1 h-full w-full"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-zinc-400 mt-1 px-1 font-bold">
+                            <span>SKOR: <strong id="hudP1Score" class="text-yellow-300">0</strong></span>
+                            <span id="hudP1RoleBadge" class="text-cyan-400 uppercase">PENANYA</span>
+                        </div>
+                    </div>
+
+                    <!-- VS Badge (Tanpa Timer / No Time Limit) -->
+                    <div class="col-span-1 flex flex-col items-center justify-center">
+                        <div class="font-arcade text-base md:text-xl sf-title">VS</div>
+                        <span class="text-[10px] bg-zinc-800 border border-zinc-600 px-1.5 py-0.5 rounded text-zinc-300 font-bold mt-1" title="Tanpa Batasan Waktu">∞ WAKTU</span>
+                    </div>
+
+                    <!-- Player 2 (Kanan) HUD -->
+                    <div class="col-span-5">
+                        <div class="flex justify-between items-end mb-1 px-1 flex-row-reverse">
+                            <div class="text-right">
+                                <span id="hudP2Char" class="text-[10px] font-arcade text-cyan-400 block">KEN</span>
+                                <span id="hudP2Name" class="font-fighting text-xl md:text-2xl text-white leading-none">PLAYER 2</span>
+                            </div>
+                            <span id="hudP2HpText" class="font-arcade text-xs text-green-400">100/100</span>
+                        </div>
+                        <div class="hp-container h-5 md:h-6 w-full flex justify-end">
+                            <div id="hudP2Bar" class="hp-fill-p2 h-full w-full"></div>
+                        </div>
+                        <div class="flex justify-between flex-row-reverse text-[11px] text-zinc-400 mt-1 px-1 font-bold">
+                            <span>SKOR: <strong id="hudP2Score" class="text-yellow-300">0</strong></span>
+                            <span id="hudP2RoleBadge" class="text-orange-400 uppercase">PENJAWAB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIGHTING STAGE CANVAS -->
+            <div id="stageWrapper" class="relative w-full aspect-[16/8] max-h-[380px] rounded-2xl overflow-hidden sf-border bg-zinc-950 shadow-2xl">
+                <canvas id="battleCanvas" class="w-full h-full block"></canvas>
+
+                <!-- Floating Turn Status Banner inside Stage -->
+                <div class="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none z-10 text-center">
+                    <div id="stageTurnBanner" class="bg-black/75 border border-yellow-400/80 px-4 py-1 rounded-full text-xs md:text-sm font-bold text-yellow-300 tracking-wider uppercase shadow-lg">
+                        GILIRAN PERTARUNGAN
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTERACTIVE CONTROL PANEL (BERGANTIAN MENANYA & MENJAWAB) -->
+            <div class="bg-zinc-900/95 border-2 border-zinc-700 rounded-2xl p-5 md:p-6">
+
+                <!-- PANEL 1: SAAT GILIRAN MENGAJUKAN SOAL (PENANYA) -->
+                <div id="panelAsker" class="hidden space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+                        <div>
+                            <span class="bg-orange-500/20 text-orange-400 border border-orange-500 text-xs font-bold px-2.5 py-0.5 rounded uppercase">GILIRANMU MENYERANG!</span>
+                            <h3 class="font-fighting text-3xl text-white mt-1">KETIKKAN SOAL MATEMATIKA UNTUK LAWANMU</h3>
+                        </div>
+                        <p class="text-xs text-zinc-400 max-w-sm">
+                            Pastikan jumlah digit sesuai aturan! Soal dengan jumlah digit yang tidak sesuai otomatis terkunci dan tidak bisa diajukan.
+                        </p>
+                    </div>
+
+                    <!-- Pilihan Operasi Matematika -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                        <button type="button" onclick="selectMathOp('ADD')" id="btnOp_ADD" class="op-tab-btn p-3 rounded-xl border-2 border-yellow-400 bg-yellow-500/20 text-left transition">
+                            <div class="flex items-center justify-between">
+                                <span class="font-arcade text-sm text-yellow-300">+</span>
+                                <span class="text-[10px] bg-zinc-900 px-2 py-0.5 rounded text-zinc-300 font-bold">3 Digit + 3 Digit</span>
+                            </div>
+                            <p class="font-bold text-sm text-white mt-1">Pertambahan</p>
+                            <p class="text-[11px] text-zinc-400">100 s/d 999</p>
+                        </button>
+
+                        <button type="button" onclick="selectMathOp('SUB')" id="btnOp_SUB" class="op-tab-btn p-3 rounded-xl border-2 border-zinc-700 bg-zinc-950 text-left transition">
+                            <div class="flex items-center justify-between">
+                                <span class="font-arcade text-sm text-cyan-300">-</span>
+                                <span class="text-[10px] bg-zinc-900 px-2 py-0.5 rounded text-zinc-300 font-bold">3 Digit - 3 Digit</span>
+                            </div>
+                            <p class="font-bold text-sm text-white mt-1">Pengurangan</p>
+                            <p class="text-[11px] text-zinc-400">100 s/d 999</p>
+                        </button>
+
+                        <button type="button" onclick="selectMathOp('MUL')" id="btnOp_MUL" class="op-tab-btn p-3 rounded-xl border-2 border-zinc-700 bg-zinc-950 text-left transition">
+                            <div class="flex items-center justify-between">
+                                <span class="font-arcade text-sm text-purple-300">×</span>
+                                <span class="text-[10px] bg-zinc-900 px-2 py-0.5 rounded text-zinc-300 font-bold">Angka 1 s/d 10</span>
+                            </div>
+                            <p class="font-bold text-sm text-white mt-1">Perkalian</p>
+                            <p class="text-[11px] text-zinc-400">1-10 × 1-10</p>
+                        </button>
+
+                        <button type="button" onclick="selectMathOp('DIV')" id="btnOp_DIV" class="op-tab-btn p-3 rounded-xl border-2 border-zinc-700 bg-zinc-950 text-left transition">
+                            <div class="flex items-center justify-between">
+                                <span class="font-arcade text-sm text-green-300">÷</span>
+                                <span class="text-[10px] bg-zinc-900 px-2 py-0.5 rounded text-zinc-300 font-bold">2 Digit (10-99)</span>
+                            </div>
+                            <p class="font-bold text-sm text-white mt-1">Pembagian</p>
+                            <p class="text-[11px] text-zinc-400">Habis dibagi bulat</p>
+                        </button>
+                    </div>
+
+                    <!-- Input Angka 1 & Angka 2 + Live Validator -->
+                    <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                            <div class="w-full md:w-48">
+                                <label id="lblNum1" class="block text-[11px] text-zinc-400 font-bold uppercase mb-1 text-center">Angka Pertama (3 Digit)</label>
+                                <input type="number" id="inputNum1" oninput="validateQuestionInput()" placeholder="100 - 999"
+                                    class="w-full bg-zinc-900 border-2 border-zinc-700 focus:border-yellow-400 rounded-xl py-3 px-4 text-center font-arcade text-lg text-white outline-none">
+                            </div>
+
+                            <div id="displayOpSymbol" class="font-arcade text-3xl text-yellow-400 pt-4">+</div>
+
+                            <div class="w-full md:w-48">
+                                <label id="lblNum2" class="block text-[11px] text-zinc-400 font-bold uppercase mb-1 text-center">Angka Kedua (3 Digit)</label>
+                                <input type="number" id="inputNum2" oninput="validateQuestionInput()" placeholder="100 - 999"
+                                    class="w-full bg-zinc-900 border-2 border-zinc-700 focus:border-yellow-400 rounded-xl py-3 px-4 text-center font-arcade text-lg text-white outline-none">
+                            </div>
+
+                            <div class="font-arcade text-2xl text-zinc-500 pt-4">=</div>
+
+                            <div class="w-full md:w-36 text-center pt-2">
+                                <span class="text-[10px] text-zinc-400 uppercase font-bold block">Kunci Jawaban</span>
+                                <span id="previewAnswerKey" class="font-arcade text-xl text-cyan-400">?</span>
+                            </div>
+                        </div>
+
+                        <!-- Pesan Validasi Ketat Digit -->
+                        <div id="validationFeedbackBox" class="mt-4 p-3 rounded-lg bg-red-950/50 border border-red-500/50 text-red-300 text-xs font-bold flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span id="validationFeedbackText">Silakan ketik angka sesuai ketentuan jumlah digit!</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="button" id="btnSubmitQuestion" onclick="sendQuestionToOpponent()" disabled
+                            class="sf-btn w-full md:w-auto px-8 py-4 rounded-xl font-arcade text-xs md:text-sm text-white">
+                            <i class="fa-solid fa-bolt mr-2"></i> LANCARKAN SERANGAN SOAL!
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PANEL 2: SAAT GILIRAN MENJAWAB SOAL (PENJAWAB) -->
+                <div id="panelAnswerer" class="hidden space-y-4 text-center py-2">
+                    <span class="bg-cyan-500/20 text-cyan-300 border border-cyan-400 text-xs font-bold px-3 py-1 rounded-full uppercase">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> TANGKIS SERANGAN LAWAN!
+                    </span>
+                    <h3 class="font-fighting text-3xl text-white">PECAHKAN SOAL DARI LAWANMU UNTUK MENYERANG BALIK!</h3>
+
+                    <div class="bg-zinc-950 sf-border-blue rounded-2xl p-6 max-w-lg mx-auto my-2">
+                        <p id="incomingOpCategory" class="text-xs text-cyan-400 font-bold uppercase tracking-widest mb-2">PERTAMBAHAN 3 DIGIT</p>
+                        <div id="incomingQuestionText" class="font-arcade text-3xl md:text-4xl text-yellow-400 tracking-wider my-3">
+                            245 + 312 = ?
+                        </div>
+                    </div>
+
+                    <form onsubmit="submitAnswerToBattle(event)" class="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto pt-2">
+                        <input type="number" id="inputPlayerAnswer" required placeholder="Ketik Jawaban..."
+                            class="w-full sm:w-2/3 bg-zinc-950 border-2 border-cyan-400 rounded-xl py-3.5 px-4 text-center font-arcade text-xl text-white outline-none">
+                        <button type="submit" class="sf-btn sf-btn-blue w-full sm:w-1/3 py-4 rounded-xl font-arcade text-xs text-white">
+                            JAWAB!
+                        </button>
+                    </form>
+                </div>
+
+                <!-- PANEL 3: MENUNGGU LAWAN -->
+                <div id="panelWaiting" class="hidden text-center py-8 space-y-3">
+                    <div class="w-14 h-14 rounded-full bg-yellow-500/10 border border-yellow-500/40 flex items-center justify-center mx-auto text-yellow-400 text-2xl">
+                        <i class="fa-solid fa-hourglass-half animate-spin"></i>
+                    </div>
+                    <h4 id="waitingTitle" class="font-fighting text-3xl text-yellow-400 tracking-wide">MENUNGGU LAWAN...</h4>
+                    <p id="waitingDesc" class="text-sm text-zinc-400 max-w-md mx-auto">Lawan sedang menyusun pertanyaan matematika untukmu. Bersiaplah menghitung tanpa batas waktu!</p>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- MODAL INVITASI TANTANGAN MASUK             -->
+    <!-- ========================================== -->
+    <div id="modalIncomingInvite" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+        <div class="bg-zinc-900 sf-border rounded-2xl max-w-md w-full p-6 text-center animate-bounce-once">
+            <span class="px-3 py-1 rounded-full bg-red-600/30 border border-red-500 text-red-300 font-arcade text-[10px]">HERE COMES A NEW CHALLENGER!</span>
+            <h3 class="font-fighting text-5xl text-yellow-400 mt-3 leading-none">TANTANGAN BAKU LAWAN!</h3>
+            <p class="text-zinc-300 text-sm mt-2">Petarung berikut mengundangmu untuk bertarung matematika:</p>
+
+            <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 my-5 flex items-center justify-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-orange-500/20 border border-orange-400 flex items-center justify-center text-orange-400 text-xl">
+                    <i class="fa-solid fa-hand-fist"></i>
+                </div>
+                <div class="text-left">
+                    <p id="inviteFromName" class="font-fighting text-3xl text-white leading-none">NAMA PENANTANG</p>
+                    <p id="inviteFromChar" class="text-xs font-arcade text-yellow-400 mt-1">KARAKTER: RYU</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="respondToInvitation(false)" class="bg-red-950 hover:bg-red-800 border-2 border-red-500 text-red-200 font-arcade text-xs py-3.5 rounded-xl transition">
+                    <i class="fa-solid fa-xmark mr-1"></i> TOLAK
+                </button>
+                <button onclick="respondToInvitation(true)" class="sf-btn sf-btn-green font-arcade text-xs text-white py-3.5 rounded-xl">
+                    <i class="fa-solid fa-check mr-1"></i> TERIMA LAWAN!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL MENUNGGU KONFIRMASI INVITASI         -->
+    <!-- ========================================== -->
+    <div id="modalWaitingInvite" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-zinc-900 sf-border-blue rounded-2xl max-w-sm w-full p-6 text-center">
+            <div class="w-14 h-14 rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center mx-auto mb-3 text-cyan-300 text-2xl">
+                <i class="fa-solid fa-paper-plane animate-bounce"></i>
+            </div>
+            <h3 class="font-fighting text-3xl text-cyan-300">MENGIRIM TANTANGAN...</h3>
+            <p id="waitingInviteTargetText" class="text-sm text-zinc-300 mt-1">Menunggu jawaban dari siswa...</p>
+            <p class="text-xs text-zinc-500 mt-3">Jika lawan menerima, arena Street Fighter akan langsung terbuka!</p>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL HASIL PERTANDINGAN (KO / VICTORY)    -->
+    <!-- ========================================== -->
+    <div id="modalMatchResult" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+        <div class="bg-zinc-900 sf-border rounded-2xl max-w-md w-full p-6 text-center">
+            <h2 id="matchResultHeadline" class="font-arcade text-3xl md:text-4xl sf-title mb-2">YOU WIN!</h2>
+            <p id="matchResultSubtext" class="text-zinc-300 text-sm mb-6">Pertarungan selesai dengan K.O!</p>
+
+            <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 mb-6 flex justify-around items-center">
+                <div>
+                    <p class="text-xs text-zinc-400 uppercase">Total Skormu</p>
+                    <p id="matchResultScore" class="font-arcade text-xl text-yellow-400 mt-1">100</p>
+                </div>
+                <div class="h-8 border-r border-zinc-800"></div>
+                <div>
+                    <p class="text-xs text-zinc-400 uppercase">Rekor M / K</p>
+                    <p id="matchResultRecord" class="font-arcade text-xl text-cyan-400 mt-1">1 / 0</p>
+                </div>
+            </div>
+
+            <button onclick="returnToLobbyFromMatch()" class="sf-btn w-full py-4 rounded-xl font-arcade text-xs text-white">
+                KEMBALI KE LOBBY KELAS
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- CUSTOM NOTIFICATION TOAST                  -->
+    <!-- ========================================== -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LOGIC                           -->
+    <!-- ========================================== -->
+    <script>
+        /********************************************************************
+         * 1. DATA KARAKTER STREET FIGHTER & KONFIGURASI
+         ********************************************************************/
+        const FIGHTERS = [
+            {
+                id: 'ryu',
+                name: 'RYU',
+                style: 'Shotokan Karate',
+                moveName: 'HADOUKEN!',
+                giColor: '#f8fafc',
+                beltColor: '#1e293b',
+                headbandColor: '#ef4444',
+                skinColor: '#f1c27d',
+                hairColor: '#27272a',
+                auraColor: '#38bdf8',
+                glovesColor: '#dc2626'
+            },
+            {
+                id: 'ken',
+                name: 'KEN MASTERS',
+                style: 'Ansatsuken',
+                moveName: 'SHORYUKEN!',
+                giColor: '#ef4444',
+                beltColor: '#09090b',
+                headbandColor: '#facc15',
+                skinColor: '#f1c27d',
+                hairColor: '#facc15',
+                auraColor: '#f97316',
+                glovesColor: '#b45309'
+            },
+            {
+                id: 'chunli',
+                name: 'CHUN-LI',
+                style: 'Chinese Kenpo',
+                moveName: 'KIKOKEN!',
+                giColor: '#2563eb',
+                beltColor: '#facc15',
+                headbandColor: '#f8fafc',
+                skinColor: '#f5cba7',
+                hairColor: '#18181b',
+                auraColor: '#60a5fa',
+                glovesColor: '#facc15'
+            },
+            {
+                id: 'guile',
+                name: 'GUILE',
+                style: 'Special Forces',
+                moveName: 'SONIC BOOM!',
+                giColor: '#15803d',
+                beltColor: '#422006',
+                headbandColor: '#15803d',
+                skinColor: '#f1c27d',
+                hairColor: '#fde047',
+                auraColor: '#facc15',
+                glovesColor: '#166534'
+            }
+        ];
+
+        const MAX_HP = 100;
+        const DAMAGE_PER_HIT = 25; // 4 serangan masuk = K.O.
+
+        // State Global Aplikasi
+        let appMode = null; // 'ADMIN' atau 'PLAYER'
+        let peer = null;
+        let isMuted = false;
+
+        // State Khusus Admin
+        let adminRoomCode = '';
+        let adminConnections = {}; // { peerId: DataConnection }
+        let adminPlayers = {};     // { peerId: { id, name, character, status, score, wins, losses, correct, wrong, currentTask, opponentName } }
+        let adminMatches = {};     // { matchId: { id, p1Id, p2Id, p1Hp, p2Hp, turnAskerId, phase, currentQuestion, lastActionText } }
+        let adminQuestionLogs = []; // Array of { time, matchId, askerName, answererName, category, expression, expectedAnswer, submittedAnswer, isCorrect }
+        let pendingInvites = {};   // { fromId_toId: { fromId, toId } }
+
+        // State Khusus Player
+        let myPeerId = '';
+        let myName = '';
+        let myCharacter = 'ryu';
+        let hostConn = null;
+        let lobbyList = [];
+        let incomingInviteFrom = null;
+        let currentMatchState = null;
+        let selectedMathOp = 'ADD';
+
+        /********************************************************************
+         * 2. SOUND SYNTHESIZER (TONE.JS - TANPA FILE EKSTERNAL)
+         ********************************************************************/
+        function playSound(type) {
+            if (isMuted || typeof Tone === 'undefined') return;
+            try {
+                if (Tone.context.state !== 'running') {
+                    Tone.context.resume();
+                }
+                const now = Tone.now();
+                if (type === 'hit') {
+                    const noise = new Tone.NoiseSynth({
+                        noise: { type: 'brown' },
+                        envelope: { attack: 0.005, decay: 0.22, sustain: 0 }
+                    }).toDestination();
+                    noise.triggerAttackRelease("8n", now);
+
+                    const synth = new Tone.MembraneSynth().toDestination();
+                    synth.triggerAttackRelease("C1", "8n", now);
+                } else if (type === 'hadouken') {
+                    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    synth.triggerAttackRelease(["C4", "G4", "C5"], "16n", now);
+                    synth.triggerAttackRelease(["E4", "B4", "E5"], "8n", now + 0.08);
+                } else if (type === 'invite') {
+                    const synth = new Tone.Synth().toDestination();
+                    synth.triggerAttackRelease("E5", "16n", now);
+                    synth.triggerAttackRelease("A5", "8n", now + 0.1);
+                } else if (type === 'ko') {
+                    const synth = new Tone.MembraneSynth().toDestination();
+                    synth.triggerAttackRelease("G1", "4n", now);
+                    synth.triggerAttackRelease("C1", "2n", now + 0.25);
+                } else if (type === 'error') {
+                    const synth = new Tone.Synth().toDestination();
+                    synth.triggerAttackRelease("F#2", "16n", now);
+                }
+            } catch (e) {
+                // Abaikan jika browser memblokir autoplay audio sebelum interaksi
+            }
+        }
+
+        function toggleAudioMute() {
+            isMuted = !isMuted;
+            const btn = document.getElementById('btnSound');
+            btn.innerHTML = isMuted ? '<i class="fa-solid fa-volume-xmark text-red-400"></i>' : '<i class="fa-solid fa-volume-high"></i>';
+            showToast(isMuted ? 'Suara dimatikan' : 'Suara diaktifkan', 'info');
+        }
+
+        /********************************************************************
+         * 3. UI HELPERS & NOTIFIKASI (TANPA ALERT/CONFIRM BROWSER)
+         ********************************************************************/
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const colors = {
+                info: 'border-cyan-400 bg-zinc-900 text-cyan-200',
+                success: 'border-green-400 bg-zinc-900 text-green-200',
+                warning: 'border-yellow-400 bg-zinc-900 text-yellow-200',
+                error: 'border-red-500 bg-red-950 text-red-200'
+            };
+            const icons = {
+                info: 'fa-circle-info text-cyan-400',
+                success: 'fa-circle-check text-green-400',
+                warning: 'fa-triangle-exclamation text-yellow-400',
+                error: 'fa-circle-xmark text-red-400'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto border-l-4 ${colors[type] || colors.info} p-4 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-lg"></i>
+                <div class="text-xs font-bold leading-snug">${message}</div>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function switchScreen(screenId) {
+            const screens = ['screenLanding', 'screenAdminDashboard', 'screenPlayerSetup', 'screenPlayerLobby', 'screenBattleArena'];
+            screens.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+
+            const exitBtn = document.getElementById('btnExitHome');
+            if (screenId === 'screenLanding') {
+                exitBtn.classList.add('hidden');
+            } else {
+                exitBtn.classList.remove('hidden');
+            }
+        }
+
+        function confirmResetApp() {
+            if (peer) {
+                peer.destroy();
+                peer = null;
+            }
+            stopBattleCanvasLoop();
+            document.getElementById('connectionBadge').classList.add('hidden');
+            switchScreen('screenLanding');
+            showToast('Telah keluar ke menu utama.', 'info');
+        }
+
+        function backToLanding() {
+            switchScreen('screenLanding');
+        }
+
+        /********************************************************************
+         * 4. MODE ADMIN (OTENTIKASI PASSWORD "majapahit" & PEER SERVER)
+         ********************************************************************/
+        function openAdminModal() {
+            document.getElementById('inputAdminPass').value = '';
+            document.getElementById('adminPassError').classList.add('hidden');
+            const modal = document.getElementById('modalAdminAuth');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => document.getElementById('inputAdminPass').focus(), 100);
+        }
+
+        function closeAdminModal() {
+            const modal = document.getElementById('modalAdminAuth');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function verifyAdminPassword(e) {
+            e.preventDefault();
+            const pass = document.getElementById('inputAdminPass').value.trim();
+            if (pass === 'majapahit') {
+                closeAdminModal();
+                initAdminServer();
+            } else {
+                playSound('error');
+                document.getElementById('adminPassError').classList.remove('hidden');
+            }
+        }
+
+        function initAdminServer() {
+            appMode = 'ADMIN';
+            switchScreen('screenAdminDashboard');
+
+            // Generate kode unik yang mudah diketik siswa
+            const randomDigits = Math.floor(1000 + Math.random() * 9000);
+            adminRoomCode = `SF-${randomDigits}`;
+            document.getElementById('adminRoomCodeDisplay').innerText = 'MENYIAPKAN...';
+
+            peer = new Peer(adminRoomCode);
+
+            peer.on('open', (id) => {
+                adminRoomCode = id;
+                document.getElementById('adminRoomCodeDisplay').innerText = id;
+                const badge = document.getElementById('connectionBadge');
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+                document.getElementById('connText').innerText = `SERVER: ${id}`;
+                showToast(`Server Admin aktif! Bagikan kode: ${id}`, 'success');
+            });
+
+            peer.on('connection', (conn) => {
+                setupAdminClientConnection(conn);
+            });
+
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    // Coba kode baru jika kebetulan bentrok
+                    peer.destroy();
+                    initAdminServer();
+                } else {
+                    showToast(`Kendala jaringan PeerJS: ${err.type}`, 'error');
+                }
+            });
+        }
+
+        function copyRoomCode() {
+            if (!adminRoomCode) return;
+            const tempInput = document.createElement('input');
+            tempInput.value = adminRoomCode;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast(`Kode Room "${adminRoomCode}" berhasil disalin!`, 'success');
+        }
+
+        function setupAdminClientConnection(conn) {
+            conn.on('open', () => {
+                adminConnections[conn.peer] = conn;
+            });
+
+            conn.on('data', (data) => {
+                handleAdminIncomingData(conn.peer, data);
+            });
+
+            conn.on('close', () => {
+                handlePlayerDisconnect(conn.peer);
+            });
+
+            conn.on('error', () => {
+                handlePlayerDisconnect(conn.peer);
+            });
+        }
+
+        function handlePlayerDisconnect(peerId) {
+            delete adminConnections[peerId];
+            if (adminPlayers[peerId]) {
+                const pName = adminPlayers[peerId].name;
+                // Jika sedang bertanding, menangkan lawannya otomatis
+                Object.values(adminMatches).forEach(m => {
+                    if (m.p1Id === peerId || m.p2Id === peerId) {
+                        const winnerId = m.p1Id === peerId ? m.p2Id : m.p1Id;
+                        if (adminPlayers[winnerId]) {
+                            adminPlayers[winnerId].status = 'IDLE';
+                            adminPlayers[winnerId].wins += 1;
+                            adminPlayers[winnerId].score += 50;
+                            adminPlayers[winnerId].currentTask = 'Menang WO (Lawan Terputus)';
+                            sendToPlayer(winnerId, {
+                                type: 'MATCH_ABORTED',
+                                reason: `${pName} terputus dari jaringan. Kamu menang otomatis (+50 Skor)!`,
+                                playerStats: adminPlayers[winnerId]
+                            });
+                        }
+                        delete adminMatches[m.id];
+                    }
+                });
+
+                delete adminPlayers[peerId];
+                showToast(`Siswa ${pName} keluar dari room.`, 'warning');
+                broadcastLobbyState();
+                renderAdminLiveboard();
+            }
+        }
+
+        function sendToPlayer(peerId, payload) {
+            const conn = adminConnections[peerId];
+            if (conn && conn.open) {
+                conn.send(payload);
+            }
+        }
+
+        function broadcastLobbyState() {
+            const publicPlayers = Object.values(adminPlayers).map(p => ({
+                id: p.id,
+                name: p.name,
+                character: p.character,
+                status: p.status,
+                score: p.score,
+                wins: p.wins,
+                losses: p.losses
+            }));
+
+            Object.keys(adminConnections).forEach(pid => {
+                sendToPlayer(pid, {
+                    type: 'LOBBY_UPDATE',
+                    players: publicPlayers
+                });
+            });
+        }
+
+        function handleAdminIncomingData(senderId, data) {
+            switch (data.type) {
+                case 'REGISTER_PLAYER': {
+                    adminPlayers[senderId] = {
+                        id: senderId,
+                        name: data.name,
+                        character: data.character || 'ryu',
+                        status: 'IDLE', // 'IDLE', 'INVITING', 'IN_MATCH'
+                        score: 0,
+                        wins: 0,
+                        losses: 0,
+                        correct: 0,
+                        wrong: 0,
+                        currentTask: 'Di Lobby (Menunggu Lawan)',
+                        opponentName: '-'
+                    };
+                    sendToPlayer(senderId, {
+                        type: 'REGISTER_ACK',
+                        player: adminPlayers[senderId]
+                    });
+                    showToast(`${data.name} bergabung ke kelas!`, 'success');
+                    broadcastLobbyState();
+                    renderAdminLiveboard();
+                    break;
+                }
+
+                case 'SEND_INVITE': {
+                    const fromP = adminPlayers[senderId];
+                    const toP = adminPlayers[data.targetId];
+                    if (!fromP || !toP) return;
+
+                    if (toP.status !== 'IDLE' || fromP.status !== 'IDLE') {
+                        sendToPlayer(senderId, {
+                            type: 'INVITE_RESULT',
+                            accepted: false,
+                            message: `${toP.name} sedang sibuk atau sudah berada dalam pertandingan lain!`
+                        });
+                        return;
+                    }
+
+                    fromP.status = 'INVITING';
+                    toP.status = 'INVITING';
+                    fromP.currentTask = `Mengundang ${toP.name}`;
+                    toP.currentTask = `Menerima undangan dari ${fromP.name}`;
+
+                    broadcastLobbyState();
+                    renderAdminLiveboard();
+
+                    sendToPlayer(toP.id, {
+                        type: 'INCOMING_INVITE',
+                        fromId: fromP.id,
+                        fromName: fromP.name,
+                        fromCharacter: fromP.character
+                    });
+                    break;
+                }
+
+                case 'INVITE_RESPONSE': {
+                    const responder = adminPlayers[senderId];
+                    const inviter = adminPlayers[data.fromId];
+                    if (!responder || !inviter) return;
+
+                    if (!data.accepted) {
+                        // Ditolak -> gagal dan kembali ke IDLE
+                        responder.status = 'IDLE';
+                        inviter.status = 'IDLE';
+                        responder.currentTask = 'Di Lobby';
+                        inviter.currentTask = 'Undangan ditolak oleh ' + responder.name;
+
+                        sendToPlayer(inviter.id, {
+                            type: 'INVITE_RESULT',
+                            accepted: false,
+                            message: `${responder.name} menolak undangan baku lawanmu!`
+                        });
+                        broadcastLobbyState();
+                        renderAdminLiveboard();
+                    } else {
+                        // Diterima -> Mulai Pertarungan Street Fighter!
+                        const matchId = `M_${Date.now()}`;
+                        inviter.status = 'IN_MATCH';
+                        responder.status = 'IN_MATCH';
+                        inviter.opponentName = responder.name;
+                        responder.opponentName = inviter.name;
+                        inviter.currentTask = `Menyusun soal untuk ${responder.name}`;
+                        responder.currentTask = `Menunggu soal dari ${inviter.name}`;
+
+                        const matchObj = {
+                            id: matchId,
+                            p1Id: inviter.id,
+                            p2Id: responder.id,
+                            p1Name: inviter.name,
+                            p2Name: responder.name,
+                            p1Char: inviter.character,
+                            p2Char: responder.character,
+                            p1Hp: MAX_HP,
+                            p2Hp: MAX_HP,
+                            p1Score: inviter.score,
+                            p2Score: responder.score,
+                            turnAskerId: inviter.id, // Pengundang mendapat giliran pertama mengajukan soal
+                            phase: 'ASKING', // 'ASKING' atau 'ANSWERING'
+                            currentQuestion: null,
+                            lastActionText: 'Pertarungan Dimulai! Giliran ' + inviter.name + ' mengajukan soal.'
+                        };
+
+                        adminMatches[matchId] = matchObj;
+
+                        sendToPlayer(inviter.id, {
+                            type: 'MATCH_START',
+                            match: matchObj
+                        });
+                        sendToPlayer(responder.id, {
+                            type: 'MATCH_START',
+                            match: matchObj
+                        });
+
+                        broadcastLobbyState();
+                        renderAdminLiveboard();
+                    }
+                    break;
+                }
+
+                case 'SUBMIT_QUESTION': {
+                    const match = adminMatches[data.matchId];
+                    if (!match) return;
+                    if (match.turnAskerId !== senderId || match.phase !== 'ASKING') return;
+
+                    // Validasi ulang di sisi Admin untuk memastikan keamanan digit
+                    const check = validateMathRules(data.op, Number(data.num1), Number(data.num2));
+                    if (!check.valid) return;
+
+                    const answererId = (match.p1Id === senderId) ? match.p2Id : match.p1Id;
+                    const askerPlayer = adminPlayers[senderId];
+                    const answererPlayer = adminPlayers[answererId];
+
+                    match.phase = 'ANSWERING';
+                    match.currentQuestion = {
+                        op: data.op,
+                        categoryName: check.categoryName,
+                        num1: Number(data.num1),
+                        num2: Number(data.num2),
+                        symbol: check.symbol,
+                        expression: `${data.num1} ${check.symbol} ${data.num2}`,
+                        expectedAnswer: check.answer
+                    };
+                    match.lastActionText = `${askerPlayer.name} mengajukan soal: ${match.currentQuestion.expression} = ?`;
+
+                    if (askerPlayer) askerPlayer.currentTask = `Menunggu ${answererPlayer.name} menjawab (${match.currentQuestion.expression})`;
+                    if (answererPlayer) answererPlayer.currentTask = `Sedang mengerjakan: ${match.currentQuestion.expression} = ?`;
+
+                    const syncPayload = {
+                        type: 'MATCH_QUESTION_ASKED',
+                        match: match
+                    };
+                    sendToPlayer(match.p1Id, syncPayload);
+                    sendToPlayer(match.p2Id, syncPayload);
+                    renderAdminLiveboard();
+                    break;
+                }
+
+                case 'SUBMIT_ANSWER': {
+                    const match = adminMatches[data.matchId];
+                    if (!match || match.phase !== 'ANSWERING' || !match.currentQuestion) return;
+
+                    const answererId = (match.p1Id === match.turnAskerId) ? match.p2Id : match.p1Id;
+                    if (senderId !== answererId) return;
+
+                    const askerPlayer = adminPlayers[match.turnAskerId];
+                    const answererPlayer = adminPlayers[answererId];
+                    const q = match.currentQuestion;
+                    const userAns = Number(data.answer);
+                    const isCorrect = (userAns === q.expectedAnswer);
+
+                    // Catat ke Log Soal Liveboard Admin
+                    const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    adminQuestionLogs.unshift({
+                        time: nowStr,
+                        askerName: askerPlayer ? askerPlayer.name : 'Siswa',
+                        answererName: answererPlayer ? answererPlayer.name : 'Siswa',
+                        category: q.categoryName,
+                        expression: q.expression,
+                        expectedAnswer: q.expectedAnswer,
+                        submittedAnswer: userAns,
+                        isCorrect: isCorrect
+                    });
+
+                    let attackerId = null;
+                    let targetId = null;
+                    let actionDesc = '';
+
+                    if (isCorrect) {
+                        // Penjawab BENAR -> Penjawab menyerang balik Penanya!
+                        attackerId = answererId;
+                        targetId = match.turnAskerId;
+                        if (answererPlayer) {
+                            answererPlayer.score += 25;
+                            answererPlayer.correct += 1;
+                        }
+                        if (targetId === match.p1Id) {
+                            match.p1Hp = Math.max(0, match.p1Hp - DAMAGE_PER_HIT);
+                        } else {
+                            match.p2Hp = Math.max(0, match.p2Hp - DAMAGE_PER_HIT);
+                        }
+                        actionDesc = `${answererPlayer.name} menjawab BENAR (${q.expression} = ${userAns}) dan menghantam ${askerPlayer.name}!`;
+                    } else {
+                        // Penjawab SALAH -> Serangan Penanya masuk telak!
+                        attackerId = match.turnAskerId;
+                        targetId = answererId;
+                        if (answererPlayer) {
+                            answererPlayer.wrong += 1;
+                        }
+                        if (askerPlayer) {
+                            askerPlayer.score += 15;
+                        }
+                        if (targetId === match.p1Id) {
+                            match.p1Hp = Math.max(0, match.p1Hp - DAMAGE_PER_HIT);
+                        } else {
+                            match.p2Hp = Math.max(0, match.p2Hp - DAMAGE_PER_HIT);
+                        }
+                        actionDesc = `${answererPlayer.name} menjawab SALAH (${userAns}, seharusnya ${q.expectedAnswer})! Serangan ${askerPlayer.name} telak mengenai sasaran!`;
+                    }
+
+                    match.p1Score = adminPlayers[match.p1Id] ? adminPlayers[match.p1Id].score : 0;
+                    match.p2Score = adminPlayers[match.p2Id] ? adminPlayers[match.p2Id].score : 0;
+                    match.lastActionText = actionDesc;
+
+                    // Cek apakah ada yang K.O. (HP <= 0)
+                    const isKO = (match.p1Hp <= 0 || match.p2Hp <= 0);
+                    let winnerId = null;
+                    let loserId = null;
+
+                    if (isKO) {
+                        winnerId = (match.p1Hp <= 0) ? match.p2Id : match.p1Id;
+                        loserId = (match.p1Hp <= 0) ? match.p1Id : match.p2Id;
+
+                        if (adminPlayers[winnerId]) {
+                            adminPlayers[winnerId].wins += 1;
+                            adminPlayers[winnerId].score += 50; // Bonus kemenangan K.O.
+                            adminPlayers[winnerId].status = 'IDLE';
+                            adminPlayers[winnerId].currentTask = `Menang K.O. melawan ${adminPlayers[loserId]?.name || ''}`;
+                            adminPlayers[winnerId].opponentName = '-';
+                        }
+                        if (adminPlayers[loserId]) {
+                            adminPlayers[loserId].losses += 1;
+                            adminPlayers[loserId].status = 'IDLE';
+                            adminPlayers[loserId].currentTask = `Kalah dari ${adminPlayers[winnerId]?.name || ''}`;
+                            adminPlayers[loserId].opponentName = '-';
+                        }
+                        match.p1Score = adminPlayers[match.p1Id] ? adminPlayers[match.p1Id].score : 0;
+                        match.p2Score = adminPlayers[match.p2Id] ? adminPlayers[match.p2Id].score : 0;
+                    } else {
+                        // BERGANTIAN PERAN: Yang baru saja menjawab sekarang menjadi PENANYA!
+                        match.turnAskerId = answererId;
+                        match.phase = 'ASKING';
+                        match.currentQuestion = null;
+
+                        const nextReceiver = (match.p1Id === answererId) ? adminPlayers[match.p2Id] : adminPlayers[match.p1Id];
+                        if (answererPlayer) answererPlayer.currentTask = `Menyusun soal balasan untuk ${nextReceiver?.name || ''}`;
+                        if (nextReceiver) nextReceiver.currentTask = `Menunggu soal dari ${answererPlayer?.name || ''}`;
+                    }
+
+                    const outcomePayload = {
+                        type: 'MATCH_ROUND_RESULT',
+                        match: match,
+                        attackerId: attackerId,
+                        targetId: targetId,
+                        isCorrect: isCorrect,
+                        submittedAnswer: userAns,
+                        expectedAnswer: q.expectedAnswer,
+                        expression: q.expression,
+                        isKO: isKO,
+                        winnerId: winnerId,
+                        p1Stats: adminPlayers[match.p1Id],
+                        p2Stats: adminPlayers[match.p2Id]
+                    };
+
+                    sendToPlayer(match.p1Id, outcomePayload);
+                    sendToPlayer(match.p2Id, outcomePayload);
+
+                    if (isKO) {
+                        delete adminMatches[match.id];
+                        broadcastLobbyState();
+                    }
+
+                    renderAdminLiveboard();
+                    break;
+                }
+            }
+        }
+
+        /********************************************************************
+         * 5. RENDER ADMIN LIVEBOARD & EXPORT PDF (jsPDF)
+         ********************************************************************/
+        function renderAdminLiveboard() {
+            const playersArr = Object.values(adminPlayers).sort((a, b) => b.score - a.score);
+            const matchesArr = Object.values(adminMatches);
+
+            // Update Statistik Ringkas
+            document.getElementById('statTotalPlayers').innerText = playersArr.length;
+            document.getElementById('statActiveMatches').innerText = matchesArr.length;
+            document.getElementById('statTotalQuestions').innerText = adminQuestionLogs.length;
+            document.getElementById('statTopScore').innerText = playersArr.length > 0 ? `${playersArr[0].name} (${playersArr[0].score})` : '-';
+
+            // Render Pertarungan Aktif
+            const matchesContainer = document.getElementById('adminActiveMatchesContainer');
+            if (matchesArr.length === 0) {
+                matchesContainer.innerHTML = `
+                    <div class="col-span-full text-center py-8 bg-zinc-950/60 rounded-xl border border-zinc-800 text-zinc-500">
+                        <i class="fa-solid fa-user-clock text-3xl mb-2"></i>
+                        <p class="text-sm font-bold">Belum ada pertarungan yang sedang berlangsung.</p>
+                    </div>
+                `;
+            } else {
+                matchesContainer.innerHTML = matchesArr.map(m => {
+                    const qBadge = m.currentQuestion
+                        ? `<div class="mt-3 bg-cyan-950/60 border border-cyan-500/50 rounded-lg p-2.5 text-center">
+                               <span class="text-[10px] text-cyan-300 uppercase font-bold block">${m.currentQuestion.categoryName}</span>
+                               <span class="font-arcade text-sm text-yellow-300 mt-1 block">SOAL AKTIF: ${m.currentQuestion.expression} = ? (Kunci: ${m.currentQuestion.expectedAnswer})</span>
+                           </div>`
+                        : `<div class="mt-3 bg-zinc-900 border border-zinc-700 rounded-lg p-2.5 text-center text-xs text-yellow-300 font-bold">
+                               <i class="fa-solid fa-keyboard mr-1"></i> Sedang mengetikkan soal serangan...
+                           </div>`;
+
+                    return `
+                        <div class="bg-zinc-950 border-2 border-orange-500/40 rounded-xl p-4 shadow-lg">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[10px] font-arcade text-orange-400">LIVE BATTLE</span>
+                                <span class="text-xs text-zinc-400 font-bold">${m.phase === 'ASKING' ? 'Fase Menyusun Soal' : 'Fase Menjawab Soal'}</span>
+                            </div>
+                            <div class="grid grid-cols-7 items-center gap-2 bg-zinc-900/90 p-3 rounded-lg">
+                                <div class="col-span-3">
+                                    <p class="font-bold text-white text-sm truncate">${m.p1Name}</p>
+                                    <p class="text-[10px] text-yellow-400 uppercase font-bold">${m.p1Char.toUpperCase()} • HP: ${m.p1Hp}%</p>
+                                    <div class="w-full bg-red-950 h-2 rounded overflow-hidden mt-1">
+                                        <div class="bg-green-500 h-full" style="width:${m.p1Hp}%"></div>
+                                    </div>
+                                </div>
+                                <div class="col-span-1 text-center font-arcade text-xs text-orange-500">VS</div>
+                                <div class="col-span-3 text-right">
+                                    <p class="font-bold text-white text-sm truncate">${m.p2Name}</p>
+                                    <p class="text-[10px] text-cyan-400 uppercase font-bold">${m.p2Char.toUpperCase()} • HP: ${m.p2Hp}%</p>
+                                    <div class="w-full bg-red-950 h-2 rounded overflow-hidden mt-1">
+                                        <div class="bg-green-500 h-full ml-auto" style="width:${m.p2Hp}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            ${qBadge}
+                            <p class="text-[11px] text-zinc-400 mt-2 italic"><i class="fa-solid fa-bolt text-yellow-400 mr-1"></i>${m.lastActionText}</p>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Tabel Skor Siswa
+            const tbody = document.getElementById('adminScoreTableBody');
+            if (playersArr.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-zinc-500">Menunggu siswa bergabung ke room...</td></tr>`;
+            } else {
+                tbody.innerHTML = playersArr.map((p, idx) => {
+                    const statusBadge = p.status === 'IN_MATCH'
+                        ? '<span class="px-2 py-0.5 rounded bg-orange-500/20 border border-orange-500 text-orange-300 text-[10px] font-bold">BERTARUNG</span>'
+                        : '<span class="px-2 py-0.5 rounded bg-green-500/20 border border-green-500 text-green-300 text-[10px] font-bold">SIAP (LOBBY)</span>';
+
+                    return `
+                        <tr class="hover:bg-zinc-800/50 transition">
+                            <td class="py-3 px-3 font-arcade text-xs text-yellow-400">${idx + 1}</td>
+                            <td class="py-3 px-3 font-bold text-white">${p.name}</td>
+                            <td class="py-3 px-3 text-xs font-bold text-cyan-300 uppercase">${p.character}</td>
+                            <td class="py-3 px-3 text-center">${statusBadge}</td>
+                            <td class="py-3 px-3 text-center font-bold"><span class="text-green-400">${p.wins}</span> / <span class="text-red-400">${p.losses}</span></td>
+                            <td class="py-3 px-3 text-center font-bold"><span class="text-cyan-400">${p.correct}</span> / <span class="text-rose-400">${p.wrong}</span></td>
+                            <td class="py-3 px-3 text-right font-arcade text-xs text-yellow-300">${p.score}</td>
+                            <td class="py-3 px-3 text-xs text-zinc-300">${p.currentTask}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Render Log Soal & Jawaban
+            const logsContainer = document.getElementById('adminQuestionLogsContainer');
+            if (adminQuestionLogs.length === 0) {
+                logsContainer.innerHTML = `<div class="text-center py-8 text-zinc-500 text-sm">Belum ada soal matematika yang diajukan.</div>`;
+            } else {
+                logsContainer.innerHTML = adminQuestionLogs.map(log => {
+                    const badge = log.isCorrect
+                        ? `<span class="bg-green-500/20 text-green-300 border border-green-500 px-2 py-0.5 rounded text-[10px] font-bold">BENAR (+25)</span>`
+                        : `<span class="bg-red-500/20 text-red-300 border border-red-500 px-2 py-0.5 rounded text-[10px] font-bold">SALAH (Kunci: ${log.expectedAnswer})</span>`;
+
+                    return `
+                        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-zinc-500 font-bold"><i class="fa-regular fa-clock mr-1"></i>${log.time} • ${log.category}</span>
+                                ${badge}
+                            </div>
+                            <p class="text-zinc-200">
+                                <strong class="text-yellow-400">${log.askerName}</strong> bertanya ke <strong class="text-cyan-400">${log.answererName}</strong>:
+                            </p>
+                            <div class="bg-zinc-900 px-3 py-1.5 rounded font-arcade text-[11px] text-white flex justify-between items-center">
+                                <span>${log.expression} = ?</span>
+                                <span class="${log.isCorrect ? 'text-green-400' : 'text-red-400'}">Dijawab: ${log.submittedAnswer}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function downloadReportPDF() {
+            const { jsPDF } = window.jspdf;
+            if (!jsPDF) {
+                showToast('Pustaka jsPDF belum siap.', 'error');
+                return;
+            }
+
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const now = new Date().toLocaleString('id-ID');
+
+            // Header Laporan
+            doc.setFillColor(24, 24, 27);
+            doc.rect(0, 0, 210, 34, 'F');
+            doc.setTextColor(255, 215, 0);
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('LAPORAN HASIL STREET FIGHTER MATEMATIKA', 14, 15);
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Kode Room Admin: ${adminRoomCode}   |   Tanggal Unduh: ${now}`, 14, 24);
+
+            // Tabel 1: Klasemen Skor Siswa
+            doc.setTextColor(30, 30, 30);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('A. Rekapitulasi Perolehan Skor Siswa', 14, 44);
+
+            const playersArr = Object.values(adminPlayers).sort((a, b) => b.score - a.score);
+            const playerRows = playersArr.map((p, i) => [
+                i + 1,
+                p.name,
+                p.character.toUpperCase(),
+                p.wins,
+                p.losses,
+                p.correct,
+                p.wrong,
+                p.score
+            ]);
+
+            doc.autoTable({
+                startY: 48,
+                head: [['No', 'Nama Siswa', 'Karakter', 'Menang', 'Kalah', 'Jawab Benar', 'Jawab Salah', 'Total Skor']],
+                body: playerRows.length > 0 ? playerRows : [['-', 'Belum ada data siswa', '-', '-', '-', '-', '-', '-']],
+                theme: 'grid',
+                headStyles: { fillColor: [234, 88, 12], textColor: 255, fontStyle: 'bold' },
+                styles: { fontSize: 9, cellPadding: 2.5 }
+            });
+
+            // Tabel 2: Riwayat Soal & Jawaban yang Dikerjakan Siswa
+            const finalY = doc.lastAutoTable.finalY + 12;
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('B. Riwayat Soal Matematika yang Dikerjakan Siswa', 14, finalY);
+
+            const logRows = adminQuestionLogs.map((l, idx) => [
+                idx + 1,
+                l.time,
+                l.askerName,
+                l.answererName,
+                l.category,
+                `${l.expression} = ?`,
+                l.submittedAnswer,
+                l.expectedAnswer,
+                l.isCorrect ? 'BENAR' : 'SALAH'
+            ]);
+
+            doc.autoTable({
+                startY: finalY + 4,
+                head: [['No', 'Waktu', 'Penanya', 'Penjawab', 'Kategori', 'Soal', 'Jawaban Siswa', 'Kunci', 'Status']],
+                body: logRows.length > 0 ? logRows : [['-', '-', '-', '-', '-', 'Belum ada riwayat soal', '-', '-', '-']],
+                theme: 'striped',
+                headStyles: { fillColor: [2, 132, 199], textColor: 255, fontStyle: 'bold' },
+                styles: { fontSize: 8, cellPadding: 2 }
+            });
+
+            doc.save(`Hasil_StreetFighter_Matematika_${adminRoomCode}.pdf`);
+            showToast('Laporan PDF berhasil diunduh!', 'success');
+        }
+
+        /********************************************************************
+         * 6. MODE PEMAIN: SETUP, PILIH KARAKTER & KONEKSI KE ADMIN
+         ********************************************************************/
+        function openPlayerLogin() {
+            switchScreen('screenPlayerSetup');
+            renderFighterSelectionGrid();
+        }
+
+        function renderFighterSelectionGrid() {
+            const container = document.getElementById('fighterSelectionGrid');
+            container.innerHTML = FIGHTERS.map(f => {
+                const isSelected = (f.id === myCharacter);
+                return `
+                    <div onclick="selectCharacter('${f.id}')" class="cursor-pointer rounded-xl p-3 border-2 transition flex flex-col items-center text-center ${isSelected ? 'border-yellow-400 bg-yellow-500/20 shadow-lg scale-[1.02]' : 'border-zinc-700 bg-zinc-950 hover:border-zinc-500'}">
+                        <canvas id="charPreview_${f.id}" width="70" height="75" class="mb-2"></canvas>
+                        <p class="font-arcade text-xs text-white">${f.name}</p>
+                        <p class="text-[10px] text-cyan-300 font-bold mt-0.5">${f.moveName}</p>
+                    </div>
+                `;
+            }).join('');
+
+            // Gambar preview karakter di tiap mini canvas
+            FIGHTERS.forEach(f => {
+                const c = document.getElementById(`charPreview_${f.id}`);
+                if (c) drawMiniFighterPortrait(c, f);
+            });
+        }
+
+        function selectCharacter(charId) {
+            myCharacter = charId;
+            renderFighterSelectionGrid();
+        }
+
+        function drawMiniFighterPortrait(canvas, fighter) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Aura Background
+            const grad = ctx.createRadialGradient(35, 40, 5, 35, 40, 32);
+            grad.addColorStop(0, fighter.auraColor + '88');
+            grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Torso Gi
+            ctx.fillStyle = fighter.giColor;
+            ctx.beginPath();
+            ctx.roundRect(18, 42, 34, 30, 6);
+            ctx.fill();
+
+            // Kerah V
+            ctx.fillStyle = fighter.skinColor;
+            ctx.beginPath();
+            ctx.moveTo(28, 42);
+            ctx.lineTo(42, 42);
+            ctx.lineTo(35, 54);
+            ctx.closePath();
+            ctx.fill();
+
+            // Kepala
+            ctx.fillStyle = fighter.skinColor;
+            ctx.beginPath();
+            ctx.arc(35, 27, 13, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Rambut
+            ctx.fillStyle = fighter.hairColor;
+            if (fighter.id === 'guile') {
+                // Rambut Flat Top Guile
+                ctx.fillRect(20, 8, 30, 12);
+            } else if (fighter.id === 'chunli') {
+                // Sanggul Kembar Chun-Li
+                ctx.beginPath();
+                ctx.arc(35, 22, 13, Math.PI, 0);
+                ctx.fill();
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.arc(19, 20, 6, 0, Math.PI * 2);
+                ctx.arc(51, 20, 6, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Rambut Spiky Ryu / Ken
+                ctx.beginPath();
+                ctx.moveTo(21, 24);
+                ctx.lineTo(25, 11);
+                ctx.lineTo(32, 16);
+                ctx.lineTo(38, 10);
+                ctx.lineTo(44, 16);
+                ctx.lineTo(49, 24);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Headband
+            ctx.fillStyle = fighter.headbandColor;
+            ctx.fillRect(22, 19, 26, 4);
+
+            // Mata tajam
+            ctx.fillStyle = '#09090b';
+            ctx.fillRect(28, 25, 4, 2.5);
+            ctx.fillRect(38, 25, 4, 2.5);
+        }
+
+        function connectPlayerToAdmin(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('inputPlayerName').value.trim();
+            const codeInput = document.getElementById('inputRoomCode').value.trim().toUpperCase();
+
+            if (!nameInput || !codeInput) return;
+
+            myName = nameInput;
+            const statusBox = document.getElementById('playerConnectStatus');
+            const btnConnect = document.getElementById('btnConnectArena');
+            statusBox.classList.remove('hidden');
+            btnConnect.disabled = true;
+
+            if (peer) peer.destroy();
+            peer = new Peer();
+
+            peer.on('open', (id) => {
+                myPeerId = id;
+                hostConn = peer.connect(codeInput, { reliable: true });
+
+                hostConn.on('open', () => {
+                    statusBox.classList.add('hidden');
+                    btnConnect.disabled = false;
+
+                    const badge = document.getElementById('connectionBadge');
+                    badge.classList.remove('hidden');
+                    badge.classList.add('flex');
+                    document.getElementById('connText').innerText = `ROOM: ${codeInput}`;
+
+                    // Daftar ke Admin
+                    hostConn.send({
+                        type: 'REGISTER_PLAYER',
+                        name: myName,
+                        character: myCharacter
+                    });
+                });
+
+                hostConn.on('data', (data) => {
+                    handlePlayerIncomingData(data);
+                });
+
+                hostConn.on('close', () => {
+                    showToast('Koneksi dengan Admin terputus!', 'error');
+                    confirmResetApp();
+                });
+
+                hostConn.on('error', () => {
+                    statusBox.classList.add('hidden');
+                    btnConnect.disabled = false;
+                    showToast('Gagal terhubung ke Kode Room tersebut.', 'error');
+                });
+            });
+
+            peer.on('error', (err) => {
+                statusBox.classList.add('hidden');
+                btnConnect.disabled = false;
+                showToast(`Gagal menghubungkan ke Room "${codeInput}". Pastikan kode benar!`, 'error');
+            });
+        }
+
+        /********************************************************************
+         * 7. HANDLER DATA PLAYER & LOBBY INVITASI
+         ********************************************************************/
+        function handlePlayerIncomingData(data) {
+            switch (data.type) {
+                case 'REGISTER_ACK': {
+                    switchScreen('screenPlayerLobby');
+                    updateMyLobbyHeader(data.player);
+                    showToast(`Selamat datang di Arena, ${data.player.name}!`, 'success');
+                    break;
+                }
+
+                case 'LOBBY_UPDATE': {
+                    lobbyList = data.players || [];
+                    const me = lobbyList.find(p => p.id === myPeerId);
+                    if (me) updateMyLobbyHeader(me);
+                    renderPlayerLobbyGrid();
+                    break;
+                }
+
+                case 'INCOMING_INVITE': {
+                    playSound('invite');
+                    incomingInviteFrom = {
+                        id: data.fromId,
+                        name: data.fromName,
+                        character: data.fromCharacter
+                    };
+                    document.getElementById('inviteFromName').innerText = data.fromName;
+                    document.getElementById('inviteFromChar').innerText = `PETARUNG: ${data.fromCharacter.toUpperCase()}`;
+                    const modal = document.getElementById('modalIncomingInvite');
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    break;
+                }
+
+                case 'INVITE_RESULT': {
+                    closeWaitingInviteModal();
+                    if (!data.accepted) {
+                        playSound('error');
+                        showToast(data.message || 'Undangan ditolak oleh siswa tersebut.', 'error');
+                    }
+                    break;
+                }
+
+                case 'MATCH_START': {
+                    closeWaitingInviteModal();
+                    closeIncomingInviteModal();
+                    playSound('hadouken');
+                    startStreetFighterMatch(data.match);
+                    break;
+                }
+
+                case 'MATCH_QUESTION_ASKED': {
+                    currentMatchState = data.match;
+                    updateBattleHUDAndPanels();
+                    triggerQuestionProjectileEffect();
+                    break;
+                }
+
+                case 'MATCH_ROUND_RESULT': {
+                    currentMatchState = data.match;
+                    handleRoundAnimationAndResult(data);
+                    break;
+                }
+
+                case 'MATCH_ABORTED': {
+                    stopBattleCanvasLoop();
+                    showToast(data.reason, 'warning');
+                    if (data.playerStats) updateMyLobbyHeader(data.playerStats);
+                    switchScreen('screenPlayerLobby');
+                    break;
+                }
+            }
+        }
+
+        function updateMyLobbyHeader(playerObj) {
+            document.getElementById('lobbyPlayerName').innerText = playerObj.name;
+            document.getElementById('lobbyFighterBadge').innerText = playerObj.character.toUpperCase();
+            document.getElementById('lobbyMyScore').innerText = playerObj.score;
+            document.getElementById('lobbyMyWins').innerText = playerObj.wins;
+            document.getElementById('lobbyMyLosses').innerText = playerObj.losses;
+
+            const fObj = FIGHTERS.find(f => f.id === playerObj.character) || FIGHTERS[0];
+            const c = document.getElementById('lobbyAvatarCanvas');
+            if (c) drawMiniFighterPortrait(c, fObj);
+        }
+
+        function renderPlayerLobbyGrid() {
+            const others = lobbyList.filter(p => p.id !== myPeerId);
+            document.getElementById('lobbyOnlineCount').innerText = `${others.length} Lawan Tersedia`;
+
+            const grid = document.getElementById('lobbyOpponentsGrid');
+            if (others.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-10 bg-zinc-950/60 rounded-xl border border-zinc-800 text-zinc-400">
+                        <i class="fa-solid fa-users-slash text-3xl mb-2 text-zinc-600"></i>
+                        <p class="font-bold">Belum ada siswa lain di lobby.</p>
+                        <p class="text-xs text-zinc-500 mt-1">Tunggu teman sekelasmu memasukkan Kode Room Admin!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = others.map(p => {
+                const isIdle = (p.status === 'IDLE');
+                const statusBadge = isIdle
+                    ? '<span class="text-[10px] bg-green-500/20 text-green-300 border border-green-500 px-2 py-0.5 rounded font-bold">SIAP TARUNG</span>'
+                    : '<span class="text-[10px] bg-orange-500/20 text-orange-300 border border-orange-500 px-2 py-0.5 rounded font-bold">SEDANG BERTANDING</span>';
+
+                return `
+                    <div class="bg-zinc-950 border-2 ${isIdle ? 'border-zinc-700 hover:border-yellow-400' : 'border-zinc-800 opacity-75'} rounded-xl p-4 flex flex-col justify-between transition">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-arcade text-cyan-400">${p.character.toUpperCase()}</span>
+                                ${statusBadge}
+                            </div>
+                            <h4 class="font-fighting text-3xl text-white leading-none">${p.name}</h4>
+                            <div class="flex gap-4 mt-3 text-xs text-zinc-400 font-bold">
+                                <span>Skor: <strong class="text-yellow-400">${p.score}</strong></span>
+                                <span>Menang: <strong class="text-green-400">${p.wins}</strong></span>
+                                <span>Kalah: <strong class="text-red-400">${p.losses}</strong></span>
+                            </div>
+                        </div>
+
+                        <button onclick="sendChallengeInvite('${p.id}', '${p.name}')" ${!isIdle ? 'disabled' : ''}
+                            class="sf-btn w-full py-3 rounded-xl font-arcade text-xs text-white mt-4">
+                            <i class="fa-solid fa-hand-fist mr-1.5"></i> ${isIdle ? 'UNDANG BAKU LAWAN!' : 'SEDANG SIBUK'}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function sendChallengeInvite(targetId, targetName) {
+            if (!hostConn) return;
+            document.getElementById('waitingInviteTargetText').innerText = `Menunggu konfirmasi dari ${targetName}...`;
+            const modal = document.getElementById('modalWaitingInvite');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            hostConn.send({
+                type: 'SEND_INVITE',
+                targetId: targetId
+            });
+        }
+
+        function closeWaitingInviteModal() {
+            const modal = document.getElementById('modalWaitingInvite');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function closeIncomingInviteModal() {
+            const modal = document.getElementById('modalIncomingInvite');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function respondToInvitation(accepted) {
+            closeIncomingInviteModal();
+            if (!incomingInviteFrom || !hostConn) return;
+            hostConn.send({
+                type: 'INVITE_RESPONSE',
+                fromId: incomingInviteFrom.id,
+                accepted: accepted
+            });
+            if (!accepted) {
+                showToast(`Kamu menolak tantangan dari ${incomingInviteFrom.name}.`, 'info');
+            }
+            incomingInviteFrom = null;
+        }
+
+        /********************************************************************
+         * 8. VALIDASI KETAT DIGIT PERTANYAAN MATEMATIKA
+         * - Pertambahan 3 digit (100 - 999) + (100 - 999)
+         * - Pengurangan 3 digit (100 - 999) - (100 - 999)
+         * - Perkalian 1-10 (1 - 10) × (1 - 10)
+         * - Pembagian 2 digit (10 - 99) ÷ (10 - 99), habis dibagi bulat
+         ********************************************************************/
+        function selectMathOp(opCode) {
+            selectedMathOp = opCode;
+            const ops = ['ADD', 'SUB', 'MUL', 'DIV'];
+            ops.forEach(op => {
+                const btn = document.getElementById(`btnOp_${op}`);
+                if (op === opCode) {
+                    btn.className = 'op-tab-btn p-3 rounded-xl border-2 border-yellow-400 bg-yellow-500/20 text-left transition';
+                } else {
+                    btn.className = 'op-tab-btn p-3 rounded-xl border-2 border-zinc-700 bg-zinc-950 text-left transition';
+                }
+            });
+
+            const lbl1 = document.getElementById('lblNum1');
+            const lbl2 = document.getElementById('lblNum2');
+            const in1 = document.getElementById('inputNum1');
+            const in2 = document.getElementById('inputNum2');
+            const sym = document.getElementById('displayOpSymbol');
+
+            in1.value = '';
+            in2.value = '';
+
+            if (opCode === 'ADD') {
+                lbl1.innerText = 'Angka Pertama (Wajib 3 Digit)';
+                lbl2.innerText = 'Angka Kedua (Wajib 3 Digit)';
+                in1.placeholder = '100 - 999';
+                in2.placeholder = '100 - 999';
+                sym.innerText = '+';
+            } else if (opCode === 'SUB') {
+                lbl1.innerText = 'Angka Pertama (Wajib 3 Digit)';
+                lbl2.innerText = 'Angka Kedua (Wajib 3 Digit)';
+                in1.placeholder = '100 - 999';
+                in2.placeholder = '100 - 999';
+                sym.innerText = '-';
+            } else if (opCode === 'MUL') {
+                lbl1.innerText = 'Angka Pertama (Wajib 1 s/d 10)';
+                lbl2.innerText = 'Angka Kedua (Wajib 1 s/d 10)';
+                in1.placeholder = '1 - 10';
+                in2.placeholder = '1 - 10';
+                sym.innerText = '×';
+            } else if (opCode === 'DIV') {
+                lbl1.innerText = 'Angka Dibagi (Wajib 2 Digit)';
+                lbl2.innerText = 'Pembagi (2 Digit: 10-99)';
+                in1.placeholder = '10 - 99';
+                in2.placeholder = '10 - 99';
+                sym.innerText = '÷';
+            }
+
+            validateQuestionInput();
+        }
+
+        function validateMathRules(op, n1, n2) {
+            if (!Number.isInteger(n1) || !Number.isInteger(n2)) {
+                return { valid: false, message: 'Masukkan bilangan bulat yang lengkap pada kedua kotak!' };
+            }
+
+            if (op === 'ADD') {
+                if (n1 < 100 || n1 > 999 || n2 < 100 || n2 > 999) {
+                    return {
+                        valid: false,
+                        message: 'DITOLAK: Pertambahan wajib menggunakan angka 3 digit (100 sampai 999) pada kedua angka!'
+                    };
+                }
+                return {
+                    valid: true,
+                    symbol: '+',
+                    categoryName: 'Pertambahan 3 Digit',
+                    answer: n1 + n2,
+                    message: `Soal Pertambahan 3 Digit Valid! (${n1} + ${n2} = ${n1 + n2})`
+                };
+            }
+
+            if (op === 'SUB') {
+                if (n1 < 100 || n1 > 999 || n2 < 100 || n2 > 999) {
+                    return {
+                        valid: false,
+                        message: 'DITOLAK: Pengurangan wajib menggunakan angka 3 digit (100 sampai 999) pada kedua angka!'
+                    };
+                }
+                if (n1 < n2) {
+                    return {
+                        valid: false,
+                        message: 'DITOLAK: Angka pertama harus lebih besar atau sama dengan angka kedua agar hasil tidak negatif!'
+                    };
+                }
+                return {
+                    valid: true,
+                    symbol: '-',
+                    categoryName: 'Pengurangan 3 Digit',
+                    answer: n1 - n2,
+                    message: `Soal Pengurangan 3 Digit Valid! (${n1} - ${n2} = ${n1 - n2})`
+                };
+            }
+
+            if (op === 'MUL') {
+                if (n1 < 1 || n1 > 10 || n2 < 1 || n2 > 10) {
+                    return {
+                        valid: false,
+                        message: 'DITOLAK: Perkalian hanya boleh menggunakan angka 1 sampai 10!'
+                    };
+                }
+                return {
+                    valid: true,
+                    symbol: '×',
+                    categoryName: 'Perkalian 1-10',
+                    answer: n1 * n2,
+                    message: `Soal Perkalian 1-10 Valid! (${n1} × ${n2} = ${n1 * n2})`
+                };
+            }
+
+            if (op === 'DIV') {
+                // Pembagian 2 digit: angka yang dibagi wajib 2 digit (10-99), pembagi 2 digit (10-99) atau faktor yang habis membagi
+                if (n1 < 10 || n1 > 99 || n2 < 10 || n2 > 99) {
+                    return {
+                        valid: false,
+                        message: 'DITOLAK: Pembagian 2 digit wajib menggunakan angka 2 digit (10 sampai 99) pada kedua kolom!'
+                    };
+                }
+                if (n1 % n2 !== 0) {
+                    return {
+                        valid: false,
+                        message: `DITOLAK: ${n1} tidak habis dibagi ${n2}! Gunakan angka 2 digit yang habis dibagi bulat (Contoh: 80 ÷ 20, 96 ÷ 12, 75 ÷ 25).`
+                    };
+                }
+                return {
+                    valid: true,
+                    symbol: '÷',
+                    categoryName: 'Pembagian 2 Digit',
+                    answer: n1 / n2,
+                    message: `Soal Pembagian 2 Digit Valid! (${n1} ÷ ${n2} = ${n1 / n2})`
+                };
+            }
+
+            return { valid: false, message: 'Pilih jenis operasi matematika.' };
+        }
+
+        function validateQuestionInput() {
+            const raw1 = document.getElementById('inputNum1').value.trim();
+            const raw2 = document.getElementById('inputNum2').value.trim();
+            const box = document.getElementById('validationFeedbackBox');
+            const text = document.getElementById('validationFeedbackText');
+            const preview = document.getElementById('previewAnswerKey');
+            const btn = document.getElementById('btnSubmitQuestion');
+
+            if (raw1 === '' || raw2 === '') {
+                box.className = 'mt-4 p-3 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-400 text-xs font-bold flex items-center justify-center gap-2';
+                text.innerText = 'Ketikkan kedua angka sesuai aturan digit untuk mengaktifkan tombol serangan.';
+                preview.innerText = '?';
+                btn.disabled = true;
+                return;
+            }
+
+            const n1 = Number(raw1);
+            const n2 = Number(raw2);
+            const result = validateMathRules(selectedMathOp, n1, n2);
+
+            if (result.valid) {
+                box.className = 'mt-4 p-3 rounded-lg bg-green-950/60 border border-green-500 text-green-300 text-xs font-bold flex items-center justify-center gap-2';
+                text.innerText = result.message;
+                preview.innerText = result.answer;
+                btn.disabled = false;
+            } else {
+                box.className = 'mt-4 p-3 rounded-lg bg-red-950/70 border border-red-500 text-red-300 text-xs font-bold flex items-center justify-center gap-2';
+                text.innerText = result.message;
+                preview.innerText = 'X';
+                btn.disabled = true;
+            }
+        }
+
+        /********************************************************************
+         * 9. LOGIKA PERTARUNGAN & CANVAS STREET FIGHTER ENGINE
+         ********************************************************************/
+        let battleAnimId = null;
+        let canvasState = {
+            frame: 0,
+            p1: { state: 'IDLE', offsetX: 0, flash: 0 },
+            p2: { state: 'IDLE', offsetX: 0, flash: 0 },
+            projectile: null, // { x, y, targetX, color, label, onHit }
+            hitSparks: [],
+            bannerText: 'FIGHT!',
+            bannerTimer: 90
+        };
+
+        function startStreetFighterMatch(matchData) {
+            currentMatchState = matchData;
+            switchScreen('screenBattleArena');
+            document.getElementById('modalMatchResult').classList.add('hidden');
+            document.getElementById('modalMatchResult').classList.remove('flex');
+
+            canvasState = {
+                frame: 0,
+                p1: { state: 'IDLE', offsetX: 0, flash: 0 },
+                p2: { state: 'IDLE', offsetX: 0, flash: 0 },
+                projectile: null,
+                hitSparks: [],
+                bannerText: 'ROUND 1 - FIGHT!',
+                bannerTimer: 110
+            };
+
+            selectMathOp('ADD');
+            updateBattleHUDAndPanels();
+            startBattleCanvasLoop();
+        }
+
+        function updateBattleHUDAndPanels() {
+            if (!currentMatchState) return;
+            const m = currentMatchState;
+
+            // Update HUD Kiri (P1) & Kanan (P2)
+            document.getElementById('hudP1Name').innerText = m.p1Name;
+            document.getElementById('hudP1Char').innerText = m.p1Char.toUpperCase();
+            document.getElementById('hudP1HpText').innerText = `${m.p1Hp}/${MAX_HP}`;
+            document.getElementById('hudP1Bar').style.width = `${m.p1Hp}%`;
+            document.getElementById('hudP1Score').innerText = m.p1Score;
+
+            document.getElementById('hudP2Name').innerText = m.p2Name;
+            document.getElementById('hudP2Char').innerText = m.p2Char.toUpperCase();
+            document.getElementById('hudP2HpText').innerText = `${m.p2Hp}/${MAX_HP}`;
+            document.getElementById('hudP2Bar').style.width = `${m.p2Hp}%`;
+            document.getElementById('hudP2Score').innerText = m.p2Score;
+
+            const isP1Asker = (m.turnAskerId === m.p1Id);
+            document.getElementById('hudP1RoleBadge').innerText = isP1Asker ? '⚔️ PENANYA (PENYERANG)' : '🛡️ PENJAWAB (BERTAHAN)';
+            document.getElementById('hudP2RoleBadge').innerText = !isP1Asker ? '⚔️ PENANYA (PENYERANG)' : '🛡️ PENJAWAB (BERTAHAN)';
+
+            const amIAsker = (m.turnAskerId === myPeerId);
+            const panelAsker = document.getElementById('panelAsker');
+            const panelAnswerer = document.getElementById('panelAnswerer');
+            const panelWaiting = document.getElementById('panelWaiting');
+            const turnBanner = document.getElementById('stageTurnBanner');
+
+            panelAsker.classList.add('hidden');
+            panelAnswerer.classList.add('hidden');
+            panelWaiting.classList.add('hidden');
+
+            if (m.phase === 'ASKING') {
+                if (amIAsker) {
+                    panelAsker.classList.remove('hidden');
+                    document.getElementById('inputNum1').value = '';
+                    document.getElementById('inputNum2').value = '';
+                    validateQuestionInput();
+                    turnBanner.innerText = 'GILIRANMU MENGAJUKAN SOAL SERANGAN!';
+                } else {
+                    panelWaiting.classList.remove('hidden');
+                    const oppName = (m.p1Id === myPeerId) ? m.p2Name : m.p1Name;
+                    document.getElementById('waitingTitle').innerText = `${oppName.toUpperCase()} SEDANG MENYUSUN SOAL...`;
+                    document.getElementById('waitingDesc').innerText = 'Bersiaplah! Begitu soal dikirim, kamu harus menjawabnya dengan tepat untuk menyerang balik.';
+                    turnBanner.innerText = `MENUNGGU SERANGAN DARI ${oppName.toUpperCase()}`;
+                }
+            } else if (m.phase === 'ANSWERING') {
+                if (!amIAsker && m.currentQuestion) {
+                    panelAnswerer.classList.remove('hidden');
+                    document.getElementById('incomingOpCategory').innerText = m.currentQuestion.categoryName;
+                    document.getElementById('incomingQuestionText').innerText = `${m.currentQuestion.expression} = ?`;
+                    const ansInput = document.getElementById('inputPlayerAnswer');
+                    ansInput.value = '';
+                    setTimeout(() => ansInput.focus(), 100);
+                    turnBanner.innerText = 'JAWAB SOAL UNTUK MENANGKIS & MENYERANG BALIK!';
+                } else {
+                    panelWaiting.classList.remove('hidden');
+                    const oppName = (m.p1Id === myPeerId) ? m.p2Name : m.p1Name;
+                    document.getElementById('waitingTitle').innerText = `${oppName.toUpperCase()} SEDANG MENGHITUNG JAWABAN...`;
+                    document.getElementById('waitingDesc').innerText = `Soal yang kamu ajukan: ${m.currentQuestion ? m.currentQuestion.expression : ''} = ?`;
+                    turnBanner.innerText = `${oppName.toUpperCase()} SEDANG MENJAWAB SOALMU`;
+                }
+            }
+        }
+
+        function sendQuestionToOpponent() {
+            if (!currentMatchState || !hostConn) return;
+            const n1 = Number(document.getElementById('inputNum1').value);
+            const n2 = Number(document.getElementById('inputNum2').value);
+            const check = validateMathRules(selectedMathOp, n1, n2);
+
+            if (!check.valid) {
+                playSound('error');
+                showToast(check.message, 'error');
+                return;
+            }
+
+            playSound('hadouken');
+            hostConn.send({
+                type: 'SUBMIT_QUESTION',
+                matchId: currentMatchState.id,
+                op: selectedMathOp,
+                num1: n1,
+                num2: n2
+            });
+        }
+
+        function submitAnswerToBattle(e) {
+            e.preventDefault();
+            if (!currentMatchState || !hostConn) return;
+            const rawAns = document.getElementById('inputPlayerAnswer').value.trim();
+            if (rawAns === '') return;
+
+            hostConn.send({
+                type: 'SUBMIT_ANSWER',
+                matchId: currentMatchState.id,
+                answer: Number(rawAns)
+            });
+        }
+
+        function triggerQuestionProjectileEffect() {
+            if (!currentMatchState) return;
+            const isP1Asker = (currentMatchState.turnAskerId === currentMatchState.p1Id);
+            if (isP1Asker) {
+                canvasState.p1.state = 'ATTACK';
+                setTimeout(() => { canvasState.p1.state = 'IDLE'; }, 500);
+            } else {
+                canvasState.p2.state = 'ATTACK';
+                setTimeout(() => { canvasState.p2.state = 'IDLE'; }, 500);
+            }
+        }
+
+        function handleRoundAnimationAndResult(data) {
+            const m = data.match;
+            const attackerIsP1 = (data.attackerId === m.p1Id);
+            const attackerFighter = FIGHTERS.find(f => f.id === (attackerIsP1 ? m.p1Char : m.p2Char)) || FIGHTERS[0];
+
+            playSound('hadouken');
+
+            // Tampilkan teks jurus
+            canvasState.bannerText = data.isCorrect
+                ? `COUNTER! ${attackerFighter.moveName}`
+                : `DIRECT HIT! ${attackerFighter.moveName}`;
+            canvasState.bannerTimer = 85;
+
+            if (attackerIsP1) {
+                canvasState.p1.state = 'ATTACK';
+            } else {
+                canvasState.p2.state = 'ATTACK';
+            }
+
+            // Luncurkan Bola Energi Hadouken / Sonic Boom di Canvas
+            const startX = attackerIsP1 ? 230 : 670;
+            const endX = attackerIsP1 ? 670 : 230;
+
+            canvasState.projectile = {
+                x: startX,
+                y: 195,
+                targetX: endX,
+                speed: attackerIsP1 ? 18 : -18,
+                color: attackerFighter.auraColor,
+                label: `${data.expression}=${data.expectedAnswer}`,
+                onHit: () => {
+                    playSound(data.isKO ? 'ko' : 'hit');
+                    // Efek Guncang Layar
+                    const wrapper = document.getElementById('stageWrapper');
+                    wrapper.classList.remove('shake-screen');
+                    void wrapper.offsetWidth;
+                    wrapper.classList.add('shake-screen');
+
+                    // Efek Hit Spark
+                    for (let i = 0; i < 18; i++) {
+                        canvasState.hitSparks.push({
+                            x: endX,
+                            y: 190,
+                            vx: (Math.random() - 0.5) * 14,
+                            vy: (Math.random() - 0.5) * 14,
+                            life: 25,
+                            color: i % 2 === 0 ? '#ffd700' : '#ff4500'
+                        });
+                    }
+
+                    if (attackerIsP1) {
+                        canvasState.p1.state = 'IDLE';
+                        canvasState.p2.state = data.isKO ? 'KO' : 'HURT';
+                        canvasState.p2.flash = 16;
+                        if (!data.isKO) setTimeout(() => { canvasState.p2.state = 'IDLE'; }, 650);
+                    } else {
+                        canvasState.p2.state = 'IDLE';
+                        canvasState.p1.state = data.isKO ? 'KO' : 'HURT';
+                        canvasState.p1.flash = 16;
+                        if (!data.isKO) setTimeout(() => { canvasState.p1.state = 'IDLE'; }, 650);
+                    }
+
+                    updateBattleHUDAndPanels();
+
+                    if (data.isKO) {
+                        canvasState.bannerText = 'K.O.!!';
+                        canvasState.bannerTimer = 180;
+                        setTimeout(() => {
+                            showMatchEndModal(data);
+                        }, 1600);
+                    }
+                }
+            };
+        }
+
+        function showMatchEndModal(data) {
+            const didIWin = (data.winnerId === myPeerId);
+            const myStats = (data.match.p1Id === myPeerId) ? data.p1Stats : data.p2Stats;
+
+            if (myStats) updateMyLobbyHeader(myStats);
+
+            document.getElementById('matchResultHeadline').innerText = didIWin ? 'YOU WIN! (K.O.)' : 'YOU LOSE!';
+            document.getElementById('matchResultSubtext').innerText = didIWin
+                ? 'Luar biasa! Perhitungan matematikamu berhasil menumbangkan lawan!'
+                : 'Jangan menyerah! Terus latih ketelitian berhitungmu dan tantang lawan lagi!';
+
+            document.getElementById('matchResultScore').innerText = myStats ? myStats.score : 0;
+            document.getElementById('matchResultRecord').innerText = myStats ? `${myStats.wins} / ${myStats.losses}` : '0 / 0';
+
+            const modal = document.getElementById('modalMatchResult');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function returnToLobbyFromMatch() {
+            stopBattleCanvasLoop();
+            document.getElementById('modalMatchResult').classList.add('hidden');
+            document.getElementById('modalMatchResult').classList.remove('flex');
+            switchScreen('screenPlayerLobby');
+        }
+
+        /********************************************************************
+         * 10. STREET FIGHTER 2D CANVAS RENDERER (STAGE & FIGHTERS)
+         ********************************************************************/
+        function startBattleCanvasLoop() {
+            stopBattleCanvasLoop();
+            const canvas = document.getElementById('battleCanvas');
+            canvas.width = 900;
+            canvas.height = 380;
+
+            function loop() {
+                canvasState.frame++;
+                renderBattleStage(canvas);
+                battleAnimId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function stopBattleCanvasLoop() {
+            if (battleAnimId) {
+                cancelAnimationFrame(battleAnimId);
+                battleAnimId = null;
+            }
+        }
+
+        function renderBattleStage(canvas) {
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width;
+            const H = canvas.height;
+
+            // 1. Langit Senja Dojo Jepang (Street Fighter Classic Vibe)
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.72);
+            skyGrad.addColorStop(0, '#0f172a');
+            skyGrad.addColorStop(0.55, '#4c1d95');
+            skyGrad.addColorStop(1, '#ea580c');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, W, H * 0.72);
+
+            // Matahari Terbenam Raksasa
+            ctx.fillStyle = 'rgba(255, 200, 0, 0.28)';
+            ctx.beginPath();
+            ctx.arc(W / 2, H * 0.55, 110, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Siluet Gunung Fuji & Pagoda di Kejauhan
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath();
+            ctx.moveTo(150, H * 0.72);
+            ctx.lineTo(380, H * 0.32);
+            ctx.lineTo(520, H * 0.32);
+            ctx.lineTo(750, H * 0.72);
+            ctx.closePath();
+            ctx.fill();
+
+            // Puncak Salju Gunung
+            ctx.fillStyle = '#e2e8f0';
+            ctx.beginPath();
+            ctx.moveTo(380, H * 0.32);
+            ctx.lineTo(520, H * 0.32);
+            ctx.lineTo(555, H * 0.42);
+            ctx.lineTo(480, H * 0.39);
+            ctx.lineTo(450, H * 0.43);
+            ctx.lineTo(415, H * 0.39);
+            ctx.lineTo(345, H * 0.42);
+            ctx.closePath();
+            ctx.fill();
+
+            // Pilar Torii Gate Kiri & Kanan
+            ctx.fillStyle = '#991b1b';
+            ctx.fillRect(70, H * 0.25, 18, H * 0.47);
+            ctx.fillRect(160, H * 0.25, 18, H * 0.47);
+            ctx.fillRect(50, H * 0.22, 150, 14);
+            ctx.fillRect(62, H * 0.30, 126, 9);
+
+            ctx.fillRect(W - 178, H * 0.25, 18, H * 0.47);
+            ctx.fillRect(W - 88, H * 0.25, 18, H * 0.47);
+            ctx.fillRect(W - 200, H * 0.22, 150, 14);
+            ctx.fillRect(W - 188, H * 0.30, 126, 9);
+
+            // 2. Lantai Arena Pertarungan Perspektif
+            const floorY = H * 0.72;
+            const floorGrad = ctx.createLinearGradient(0, floorY, 0, H);
+            floorGrad.addColorStop(0, '#27272a');
+            floorGrad.addColorStop(1, '#09090b');
+            ctx.fillStyle = floorGrad;
+            ctx.fillRect(0, floorY, W, H - floorY);
+
+            // Garis Ubin Perspektif
+            ctx.strokeStyle = '#3f3f46';
+            ctx.lineWidth = 2;
+            for (let i = -6; i <= 6; i++) {
+                ctx.beginPath();
+                ctx.moveTo(W / 2 + i * 70, floorY);
+                ctx.lineTo(W / 2 + i * 165, H);
+                ctx.stroke();
+            }
+            ctx.beginPath();
+            ctx.moveTo(0, floorY);
+            ctx.lineTo(W, floorY);
+            ctx.strokeStyle = '#eab308';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            if (!currentMatchState) return;
+
+            const f1 = FIGHTERS.find(f => f.id === currentMatchState.p1Char) || FIGHTERS[0];
+            const f2 = FIGHTERS.find(f => f.id === currentMatchState.p2Char) || FIGHTERS[1];
+
+            // 3. Gambar Karakter Player 1 (Kiri) & Player 2 (Kanan)
+            drawFullBodyFighter(ctx, 210 + canvasState.p1.offsetX, floorY + 35, 1, f1, canvasState.p1, canvasState.frame);
+            drawFullBodyFighter(ctx, 690 + canvasState.p2.offsetX, floorY + 35, -1, f2, canvasState.p2, canvasState.frame);
+
+            // 4. Update & Gambar Projectile (Bola Energi Hadouken + Rumus Matematika)
+            if (canvasState.projectile) {
+                const proj = canvasState.projectile;
+                proj.x += proj.speed;
+
+                ctx.save();
+                // Bola Energi Luar
+                const radGrad = ctx.createRadialGradient(proj.x, proj.y, 4, proj.x, proj.y, 38);
+                radGrad.addColorStop(0, '#ffffff');
+                radGrad.addColorStop(0.4, proj.color);
+                radGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = radGrad;
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y, 38, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Label Soal di atas Hadouken
+                ctx.font = 'bold 14px "Press Start 2P"';
+                ctx.fillStyle = '#ffd700';
+                ctx.textAlign = 'center';
+                ctx.fillText(proj.label, proj.x, proj.y - 42);
+                ctx.restore();
+
+                const reached = (proj.speed > 0 && proj.x >= proj.targetX) || (proj.speed < 0 && proj.x <= proj.targetX);
+                if (reached) {
+                    const cb = proj.onHit;
+                    canvasState.projectile = null;
+                    if (cb) cb();
+                }
+            }
+
+            // 5. Efek Hit Sparks
+            for (let i = canvasState.hitSparks.length - 1; i >= 0; i--) {
+                const sp = canvasState.hitSparks[i];
+                sp.x += sp.vx;
+                sp.y += sp.vy;
+                sp.life--;
+                ctx.fillStyle = sp.color;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                if (sp.life <= 0) canvasState.hitSparks.splice(i, 1);
+            }
+
+            // 6. Teks Banner Arcade ("ROUND 1 - FIGHT!", "HADOUKEN!", "K.O.!!")
+            if (canvasState.bannerTimer > 0) {
+                canvasState.bannerTimer--;
+                ctx.save();
+                ctx.font = 'bold 34px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000';
+                ctx.fillText(canvasState.bannerText, W / 2 + 4, H * 0.42 + 4);
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText(canvasState.bannerText, W / 2, H * 0.42);
+                ctx.restore();
+            }
+        }
+
+        function drawFullBodyFighter(ctx, baseX, baseY, dir, fighter, animState, frame) {
+            ctx.save();
+            ctx.translate(baseX, baseY);
+
+            // Animasi Bernapas / Kuda-kuda Fighting Stance
+            const bobY = (animState.state === 'IDLE') ? Math.sin(frame * 0.12) * 5 : 0;
+            const swayX = (animState.state === 'IDLE') ? Math.cos(frame * 0.06) * 3 : 0;
+
+            // Bayangan di lantai
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 48, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.scale(dir, 1);
+
+            if (animState.state === 'KO') {
+                // Karakter Terbaring K.O.
+                ctx.translate(-30, -12);
+                ctx.rotate(-Math.PI / 2);
+            } else if (animState.state === 'HURT') {
+                // Terpental ke belakang saat kena pukul
+                ctx.translate(-18, -5);
+                ctx.rotate(-0.18);
+            } else if (animState.state === 'ATTACK') {
+                // Condong ke depan melancarkan Hadouken
+                ctx.translate(22, 0);
+            }
+
+            // Aura Energi Petarung
+            const auraGrad = ctx.createRadialGradient(0, -85 + bobY, 10, 0, -85 + bobY, 75);
+            auraGrad.addColorStop(0, fighter.auraColor + '55');
+            auraGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = auraGrad;
+            ctx.beginPath();
+            ctx.arc(0, -85 + bobY, 75, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Efek Berkedip Putih saat Terkena Serangan
+            const isFlashing = animState.flash > 0 && (animState.flash % 2 === 0);
+            if (animState.flash > 0) animState.flash--;
+
+            // Kaki Belakang & Kaki Depan (Kuda-kuda Karate)
+            ctx.fillStyle = isFlashing ? '#ffffff' : fighter.giColor;
+            // Kaki Belakang
+            ctx.beginPath();
+            ctx.roundRect(-34, -68 + bobY * 0.4, 22, 58, 6);
+            ctx.fill();
+            // Kaki Depan
+            ctx.beginPath();
+            ctx.roundRect(10, -68 + bobY * 0.4, 22, 58, 6);
+            ctx.fill();
+
+            // Telapak Kaki / Sepatu
+            ctx.fillStyle = isFlashing ? '#ffffff' : fighter.skinColor;
+            ctx.fillRect(-36, -12, 24, 10);
+            ctx.fillRect(10, -12, 24, 10);
+
+            // Badan / Torso Gi Berotot
+            ctx.fillStyle = isFlashing ? '#ffffff' : fighter.giColor;
+            ctx.beginPath();
+            ctx.roundRect(-28 + swayX, -138 + bobY, 56, 76, 10);
+            ctx.fill();
+
+            // Dada Berotot (V-neck)
+            ctx.fillStyle = isFlashing ? '#ffffff' : fighter.skinColor;
+            ctx.beginPath();
+            ctx.moveTo(-12 + swayX, -138 + bobY);
+            ctx.lineTo(14 + swayX, -138 + bobY);
+            ctx.lineTo(2 + swayX, -110 + bobY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Sabuk Hitam / Belt
+            ctx.fillStyle = fighter.beltColor;
+            ctx.fillRect(-29 + swayX, -76 + bobY, 58, 11);
+            // Ikatan Sabuk Berkibar
+            const beltWave = Math.sin(frame * 0.15) * 4;
+            ctx.beginPath();
+            ctx.moveTo(-15 + swayX, -70 + bobY);
+            ctx.lineTo(-32 + swayX, -50 + bobY + beltWave);
+            ctx.lineTo(-24 + swayX, -48 + bobY + beltWave);
+            ctx.closePath();
+            ctx.fill();
+
+            // Kepala Petarung
+            ctx.fillStyle = isFlashing ? '#ffffff' : fighter.skinColor;
+            ctx.beginPath();
+            ctx.arc(2 + swayX, -160 + bobY, 21, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Rambut Khas Tiap Karakter
+            ctx.fillStyle = fighter.hairColor;
+            if (fighter.id === 'guile') {
+                ctx.fillRect(-20 + swayX, -190 + bobY, 44, 18);
+            } else if (fighter.id === 'chunli') {
+                ctx.beginPath();
+                ctx.arc(2 + swayX, -166 + bobY, 21, Math.PI, 0);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(-20 + swayX, -168 + bobY, 10, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Spiky Hair Ryu / Ken
+                ctx.beginPath();
+                ctx.moveTo(-18 + swayX, -168 + bobY);
+                ctx.lineTo(-14 + swayX, -190 + bobY);
+                ctx.lineTo(-2 + swayX, -180 + bobY);
+                ctx.lineTo(8 + swayX, -192 + bobY);
+                ctx.lineTo(18 + swayX, -180 + bobY);
+                ctx.lineTo(24 + swayX, -168 + bobY);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Ikat Kepala (Headband) Berkibar
+            ctx.fillStyle = fighter.headbandColor;
+            ctx.fillRect(-18 + swayX, -173 + bobY, 40, 7);
+            ctx.beginPath();
+            ctx.moveTo(-18 + swayX, -170 + bobY);
+            ctx.lineTo(-42 + swayX, -162 + bobY + beltWave);
+            ctx.lineTo(-38 + swayX, -153 + bobY + beltWave);
+            ctx.closePath();
+            ctx.fill();
+
+            // Wajah & Mata Fokus
+            ctx.fillStyle = '#09090b';
+            ctx.fillRect(6 + swayX, -163 + bobY, 6, 4);
+            ctx.fillRect(16 + swayX, -163 + bobY, 5, 4);
+
+            // Lengan & Sarung Tinju Petarung
+            ctx.fillStyle = isFlashing ? '#ffffff' : fighter.skinColor;
+            if (animState.state === 'ATTACK') {
+                // Pose Dua Tangan Mendorong Hadouken ke Depan
+                ctx.fillRect(12, -132 + bobY, 45, 16);
+                ctx.fillStyle = fighter.glovesColor;
+                ctx.beginPath();
+                ctx.arc(60, -124 + bobY, 14, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Pose Kuda-Kuda Tinju Siap Tarung
+                const fistBob = Math.cos(frame * 0.12) * 4;
+                ctx.fillRect(-10 + swayX, -128 + bobY, 34, 15);
+                ctx.fillStyle = fighter.glovesColor;
+                // Kepalan Tangan Depan
+                ctx.beginPath();
+                ctx.arc(30 + swayX, -124 + bobY + fistBob, 13, 0, Math.PI * 2);
+                ctx.fill();
+                // Kepalan Tangan Belakang (Guard)
+                ctx.beginPath();
+                ctx.arc(10 + swayX, -136 + bobY - fistBob, 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    </script>
+</body>
+</html>
